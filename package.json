@@ -1,0 +1,21 @@
+{
+  "name": "data-quality-workbench",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace @workbench/web",
+    "build": "npm run build --workspaces",
+    "lint": "eslint . --ignore-pattern '**/*.ts' --ignore-pattern '**/*.tsx'",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

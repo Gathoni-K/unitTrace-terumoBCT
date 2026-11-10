@@ -1,0 +1,53 @@
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { Role, DataClient } from '@workbench/shared';
+import type { Language, Theme } from './types';
+import { MockDataClient } from './mockDataClient';
+
+export const AuthContext = createContext<{ role: Role | null; setRole: (role: Role) => void }>({ role: null, setRole: () => undefined });
+export function useAuth() { return useContext(AuthContext); }
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [role, setRole] = useState<Role | null>(null);
+  return <AuthContext.Provider value={{ role, setRole }}>{children}</AuthContext.Provider>;
+}
+
+export const ConnectionContext = createContext<{ state: 'online' | 'offline' | 'syncing' }>({ state: 'offline' });
+export function useConnection() { return useContext(ConnectionContext); }
+export function ConnectionProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<'online' | 'offline'>(() => navigator.onLine ? 'online' : 'offline');
+  useEffect(() => {
+    const online = () => setState('online');
+    const offline = () => setState('offline');
+    window.addEventListener('online', online); window.addEventListener('offline', offline);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
+  }, []);
+  return <ConnectionContext.Provider value={{ state }}>{children}</ConnectionContext.Provider>;
+}
+
+export const EngineContext = createContext<{ status: 'smart' | 'rules_only' }>({ status: 'rules_only' });
+export function useEngineStatus() { return useContext(EngineContext); }
+export function EngineStatusProvider({ children }: { children: ReactNode }) {
+  const [status, setStatus] = useState<'smart' | 'rules_only'>('rules_only');
+  useEffect(() => { healthCheck().then(setStatus).catch(() => setStatus('rules_only')); }, []);
+  return <EngineContext.Provider value={{ status }}>{children}</EngineContext.Provider>;
+}
+async function healthCheck(): Promise<'smart' | 'rules_only'> {
+  // TODO: replace with a backend health check; no network call is made in the scaffold.
+  return 'rules_only';
+}
+
+export const DataClientContext = createContext<DataClient>(new MockDataClient());
+export function useDataClient() { return useContext(DataClientContext); }
+export function DataClientProvider({ children }: { children: ReactNode }) {
+  const client = useMemo(() => new MockDataClient(), []);
+  return <DataClientContext.Provider value={client}>{children}</DataClientContext.Provider>;
+}
+
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme | null) ?? 'system');
+  useEffect(() => {
+    const resolved = theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+    document.documentElement.dataset.theme = resolved;
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  return <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">◐</button>;
+}
