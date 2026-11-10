@@ -125,16 +125,15 @@ npm run lint
 ## 6. Architecture & Data Documentation
 
 - **Architecture Specification & Ecosystem Diagrams**: [`docs/architecture.md`](docs/architecture.md)
-- **Data Minimisation & Governance Map**: [`docs/data-map.md`](docs/data-map.md)
-- **HL7 FHIR Interoperability Guide**: [`docs/fhir-mapping.md`](docs/fhir-mapping.md)
-- **SMS & USSD Decision Webhook**: [`docs/sms-webhook.md`](docs/sms-webhook.md)
-- **Detector Expansion Backlog**: [`docs/detector-backlog.md`](docs/detector-backlog.md)
+- **Data Minimisation & Governance Map**: [`docs/dataMap.md`](docs/dataMap.md)
+- **HL7 FHIR Interoperability Guide**: [`docs/fhirMapping.md`](docs/fhirMapping.md)
+- **SMS & USSD Decision Webhook**: [`docs/smsWebhook.md`](docs/smsWebhook.md)
+- **Detector Expansion Backlog**: [`docs/detectorBacklog.md`](docs/detectorBacklog.md)
 
 ---
 
 ## 7. AI Tools Used
 
-UnitTrace was built with the assistance of **Google Antigravity** powered by advanced Gemini & Claude frontier models working in pair-programming mode:
+UnitTrace was built with the assistance of **Google Antigravity** 
 - **Test-Driven Architecture**: Crafting comprehensive unit and integration suites with Vitest (mocked PostgreSQL pools, transactional rollbacks, edge conditions).
-- **Algorithmic Design**: Designing the multi-factor duplicate scoring algorithm (Levenshtein distance, date-of-birth day/month proximity indexing, phone agreement weighting).
 - **Interoperability & Standards**: Mapping relational health tables to HL7 FHIR Release 4/5 resource definitions and ISBT 128 blood barcode specifications.
