@@ -72,7 +72,37 @@ npm run detect
 
 ---
 
-## 5. Getting Started & How to Run
+## 5. SMS / Africa's Talking Setup
+
+For rural blood banks and frontline clinicians without reliable broadband, UnitTrace supports a lightweight SMS review workflow powered by **Africa's Talking**.
+
+### Callback Webhook URL
+Configure the following callback URL in the **Africa's Talking Dashboard** (under SMS -> SMS Callback URLs -> Inbound Messages):
+
+```text
+{DEPLOYED_BASE_URL}/api/webhooks/africastalking/sms
+```
+*(Example: `https://unittrace-api.onrender.com/api/webhooks/africastalking/sms`)*
+
+### Required Environment Variables
+Configure these three environment variables in your deployment environment (or `.env`):
+
+| Variable | Description | Example / Default |
+|---|---|---|
+| `AFRICASTALKING_USERNAME` | Your Africa's Talking account or app username | `sandbox` (for test simulator) or production username |
+| `AFRICASTALKING_API_KEY` | Developer API key generated from the AT dashboard | `atsk_...` |
+| `AFRICASTALKING_SENDER_ID` | Alphanumeric sender ID (optional; omitted if blank) | `UNITTRACE` |
+
+### Hackathon Demo with the AT Simulator
+> **Note on Evaluation**: To demonstrate the mobile phone flow live during the hackathon without requiring an expensive telecommunication shortcode provisioning period, evaluation will be conducted using the **Africa's Talking Web Simulator** (`https://simulator.africastalking.com:1517/`):
+> 1. Launch the simulator with a simulated Kenya phone number (e.g. `+254711000000`).
+> 2. Send `41 OK` or `41 NO` to the simulator shortcode.
+> 3. The AT simulator dispatches the inbound webhook payload to `{DEPLOYED_BASE_URL}/api/webhooks/africastalking/sms`.
+> 4. UnitTrace processes the decision, verifies RBAC, updates `donors_clean` / `requests_clean` / `transfers_clean`, logs the action with channel `'sms'` to `public.audit_log`, and sends an instant plain text confirmation back to the handset.
+
+---
+
+## 6. Getting Started & How to Run
 
 ### Prerequisites
 - Node.js v20+
@@ -122,17 +152,17 @@ npm run lint
 
 ---
 
-## 6. Architecture & Data Documentation
+## 7. Architecture & Data Documentation
 
 - **Architecture Specification & Ecosystem Diagrams**: [`docs/architecture.md`](docs/architecture.md)
-- **Data Minimisation & Governance Map**: [`docs/dataMap.md`](docs/dataMap.md)
-- **HL7 FHIR Interoperability Guide**: [`docs/fhirMapping.md`](docs/fhirMapping.md)
-- **SMS & USSD Decision Webhook**: [`docs/smsWebhook.md`](docs/smsWebhook.md)
-- **Detector Expansion Backlog**: [`docs/detectorBacklog.md`](docs/detectorBacklog.md)
+- **Data Minimisation & Governance Map**: [`docs/data-map.md`](docs/data-map.md)
+- **HL7 FHIR Interoperability Guide**: [`docs/fhir-mapping.md`](docs/fhir-mapping.md)
+- **SMS & USSD Decision Webhook**: [`docs/sms-webhook.md`](docs/sms-webhook.md)
+- **Detector Expansion Backlog**: [`docs/detector-backlog.md`](docs/detector-backlog.md)
 
 ---
 
-## 7. AI Tools Used
+## 8. AI Tools Used
 
 UnitTrace was built with the assistance of **Google Antigravity** 
 - **Test-Driven Architecture**: Crafting comprehensive unit and integration suites with Vitest (mocked PostgreSQL pools, transactional rollbacks, edge conditions).
