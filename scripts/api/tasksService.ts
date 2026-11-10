@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { ensureCleanTables, applyDecisionFix } from './cleanTables.js';
+import { maskTaskPii } from '../lib/pii.js';
 
 export interface ListTasksOptions {
   status?: string;
@@ -7,6 +8,7 @@ export interface ListTasksOptions {
   source?: string;
   limit?: number;
   offset?: number;
+  mask?: boolean;
 }
 
 export interface TaskRecord {
@@ -114,7 +116,7 @@ export async function listTasks(
       }
     }
 
-    return {
+    const task: TaskRecord = {
       id: String(row.task_id),
       type: row.type,
       status: row.status,
@@ -126,6 +128,8 @@ export async function listTasks(
       createdAt: row.created_at,
       dedupeKey: row.dedupe_key,
     };
+
+    return options.mask === false ? task : maskTaskPii(task);
   });
 
   return { tasks, total, limit, offset };
@@ -134,6 +138,7 @@ export async function listTasks(
 export async function getTask(
   pool: Pool | PoolClient,
   id: number | string,
+  mask = true,
 ): Promise<TaskRecord | null> {
   const res = await pool.query<{
     task_id: string | number;
@@ -186,7 +191,7 @@ export async function getTask(
     }
   }
 
-  return {
+  const task: TaskRecord = {
     id: String(row.task_id),
     type: row.type,
     status: row.status,
@@ -198,6 +203,31 @@ export async function getTask(
     createdAt: row.created_at,
     dedupeKey: row.dedupe_key,
   };
+
+  return mask ? maskTaskPii(task) : task;
+}
+
+export async function revealTask(
+  pool: Pool,
+  taskId: number | string,
+  userId?: string,
+): Promise<TaskRecord> {
+  const task = await getTask(pool, taskId, false);
+  if (!task) {
+    throw new Error(`Task ${taskId} not found.`);
+  }
+
+  const validUuid = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+    ? userId
+    : null;
+
+  await pool.query(
+    `insert into public.access_log (user_id, event, record_type, record_id)
+     values ($1, 'task_pii_reveal', 'task', $2)`,
+    [validUuid, String(taskId)],
+  );
+
+  return task;
 }
 
 export async function submitDecision(

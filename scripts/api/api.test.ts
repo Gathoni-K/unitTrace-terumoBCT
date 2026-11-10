@@ -147,6 +147,80 @@ describe('Task Management API', () => {
     expect(json.error).toContain('must be one of');
   });
 
+  it('GET /api/tasks masks birth_date and phone in task reason and suggestion', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ count: '1' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            task_id: '105',
+            type: 'duplicate_donor',
+            status: 'open',
+            record_ids: ['DNR-001', 'DNR-002'],
+            suggestion: { action: 'review_merge', birth_date: '1992-04-18', phone_last4: '7788' },
+            reason: 'Donors DNR-001 and DNR-002 share the same phone last 4 digits (7788) and born on 1992-04-18.',
+            confidence: 'high',
+            source: 'smart',
+            created_at: '2026-01-01T00:00:00Z',
+            dedupe_key: 'duplicate_donor:DNR-001:DNR-002',
+          },
+        ],
+      });
+
+    const res = await fetch(`${baseUrl}/api/tasks`);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    const task = json.tasks[0];
+
+    expect(task.reason).toContain('XXXXX7788');
+    expect(task.reason).toContain('1992-XX-XX');
+    expect(task.suggestion.birth_date).toBe('1992-XX-XX');
+    expect(task.suggestion.phone_last4).toBe('XXXXX7788');
+  });
+
+  it('POST /api/tasks/:id/reveal records access_log audit entry and returns unmasked task', async () => {
+    mockQuery
+      // getTask query (unmasked)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            task_id: '105',
+            type: 'duplicate_donor',
+            status: 'open',
+            record_ids: ['DNR-001', 'DNR-002'],
+            suggestion: { action: 'review_merge', birth_date: '1992-04-18', phone_last4: '7788' },
+            reason: 'Donors DNR-001 and DNR-002 share the same phone last 4 digits (7788) and born on 1992-04-18.',
+            confidence: 'high',
+            source: 'smart',
+            created_at: '2026-01-01T00:00:00Z',
+            dedupe_key: 'duplicate_donor:DNR-001:DNR-002',
+          },
+        ],
+      })
+      // access_log insert
+      .mockResolvedValueOnce({});
+
+    const res = await fetch(`${baseUrl}/api/tasks/105/reveal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+
+    // Verify unmasked values
+    expect(json.reason).toContain('(7788)');
+    expect(json.reason).toContain('1992-04-18');
+    expect(json.suggestion.birth_date).toBe('1992-04-18');
+    expect(json.suggestion.phone_last4).toBe('7788');
+
+    // Verify access_log insert query was invoked with user_id and event
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockQuery.mock.calls[1][0]).toContain('insert into public.access_log');
+    expect(mockQuery.mock.calls[1][1]).toEqual(['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '105']);
+  });
+
   it('GET /api/metrics/before-after returns headline metrics', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
