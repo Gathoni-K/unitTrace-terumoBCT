@@ -6,8 +6,11 @@ import { run as runMissingDonorBloodGroup } from './detectors/missingDonorBloodG
 import { run as runUnknownPatientBloodGroup } from './detectors/unknownPatientBloodGroup.js';
 import { run as runUnconfirmedTransfers } from './detectors/unconfirmedTransfers.js';
 import { run as runFuzzyDuplicates } from './detectors/fuzzyDuplicates.js';
+import { run as runDuplicateDonors } from './detectors/duplicateDonors.js';
 import { run as runDonationTooSoon } from './detectors/donationTooSoon.js';
 import { run as runLoggerGaps } from './detectors/loggerGaps.js';
+import { run as runInvalidIsbt128 } from './detectors/invalidIsbt128.js';
+import { run as runInconsistentFacilityName } from './detectors/inconsistentFacilityName.js';
 import { toTaskRow, type TaskRow } from './lib/taskRow.js';
 
 const config = countryConfigSchema.parse(countryJson);
@@ -58,16 +61,26 @@ async function insertTaskRows(rows: TaskRow[]): Promise<{ created: number; alrea
 }
 
 async function main(): Promise<void> {
-  console.log('Skipping facilityNames: not implemented (out of hackathon core defect scope)');
+  const noAiFlag = process.argv.includes('--no-ai');
+  const enableFuzzy = config.enable_fuzzy_matching ?? config.enableFuzzyMatching ?? true;
+  const isFallback = noAiFlag || !enableFuzzy;
+
+  if (isFallback) {
+    console.log('⚠️ AI offline. Running rule-based detectors and naive baseline only.');
+  }
 
   const detectors = [
     { name: 'sensorGlitches', fn: runSensorGlitches },
     { name: 'missingDonorBloodGroup', fn: runMissingDonorBloodGroup },
     { name: 'unknownPatientBloodGroup', fn: runUnknownPatientBloodGroup },
     { name: 'unconfirmedTransfers', fn: runUnconfirmedTransfers },
-    { name: 'fuzzyDuplicates', fn: runFuzzyDuplicates },
+    isFallback
+      ? { name: 'duplicateDonors (naive baseline)', fn: runDuplicateDonors }
+      : { name: 'fuzzyDuplicates', fn: runFuzzyDuplicates },
     { name: 'donationTooSoon', fn: runDonationTooSoon },
     { name: 'loggerGaps', fn: runLoggerGaps },
+    { name: 'invalidIsbt128', fn: runInvalidIsbt128 },
+    { name: 'inconsistentFacilityName', fn: runInconsistentFacilityName },
   ];
 
   const allFindings: Finding[] = [];

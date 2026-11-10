@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { ensureCleanTables, applyDecisionFix } from './cleanTables.js';
+import { maskTaskPii } from '../lib/pii.js';
 
 export interface ListTasksOptions {
   status?: string;
@@ -7,6 +8,7 @@ export interface ListTasksOptions {
   source?: string;
   limit?: number;
   offset?: number;
+  mask?: boolean;
 }
 
 export interface TaskRecord {
@@ -26,6 +28,8 @@ export interface DecisionPayload {
   action: 'accept' | 'change' | 'reject' | 'approve' | 'send_back' | 'escalate';
   modified_suggestion?: Record<string, unknown>;
   user_id?: string;
+  user_role?: 'clerk' | 'supervisor';
+  ip_address?: string;
   channel?: 'web' | 'offline_sync' | 'sms' | 'ussd';
   note?: string;
 }
@@ -114,7 +118,7 @@ export async function listTasks(
       }
     }
 
-    return {
+    const task: TaskRecord = {
       id: String(row.task_id),
       type: row.type,
       status: row.status,
@@ -126,6 +130,8 @@ export async function listTasks(
       createdAt: row.created_at,
       dedupeKey: row.dedupe_key,
     };
+
+    return options.mask === false ? task : maskTaskPii(task);
   });
 
   return { tasks, total, limit, offset };
@@ -134,6 +140,7 @@ export async function listTasks(
 export async function getTask(
   pool: Pool | PoolClient,
   id: number | string,
+  mask = true,
 ): Promise<TaskRecord | null> {
   const res = await pool.query<{
     task_id: string | number;
@@ -186,7 +193,7 @@ export async function getTask(
     }
   }
 
-  return {
+  const task: TaskRecord = {
     id: String(row.task_id),
     type: row.type,
     status: row.status,
@@ -198,6 +205,31 @@ export async function getTask(
     createdAt: row.created_at,
     dedupeKey: row.dedupe_key,
   };
+
+  return mask ? maskTaskPii(task) : task;
+}
+
+export async function revealTask(
+  pool: Pool,
+  taskId: number | string,
+  userId?: string,
+): Promise<TaskRecord> {
+  const task = await getTask(pool, taskId, false);
+  if (!task) {
+    throw new Error(`Task ${taskId} not found.`);
+  }
+
+  const validUuid = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+    ? userId
+    : null;
+
+  await pool.query(
+    `insert into public.access_log (user_id, event, record_type, record_id)
+     values ($1, 'task_pii_reveal', 'task', $2)`,
+    [validUuid, String(taskId)],
+  );
+
+  return task;
 }
 
 export async function submitDecision(
@@ -227,6 +259,13 @@ export async function submitDecision(
     const task = taskRes.rows[0];
     const previousStatus = task.status;
 
+    // RBAC: duplicate_donor merges strictly require 'supervisor' role
+    if (task.type === 'duplicate_donor' && payload.user_role !== 'supervisor') {
+      const forbiddenError = new Error('Forbidden: Only supervisors are authorized to decide on duplicate donor merges.');
+      (forbiddenError as { statusCode?: number }).statusCode = 403;
+      throw forbiddenError;
+    }
+
     // 2. Compute after_value and next_status
     let afterValue: unknown = null;
     let nextStatus = previousStatus;
@@ -254,13 +293,16 @@ export async function submitDecision(
     // 4. Record decision
     const channel = payload.channel ?? 'web';
     const userId = payload.user_id ?? null;
+    const userRole = payload.user_role ?? 'clerk';
+    const ipAddress = payload.ip_address ?? '127.0.0.1';
+
     await client.query(
-      `insert into public.decisions (task_id, user_id, action, note, channel)
-       values ($1, $2, $3, $4, $5)`,
-      [taskId, userId, payload.action, payload.note ?? null, channel],
+      `insert into public.decisions (task_id, user_id, role, action, note, channel)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [taskId, userId, userRole, payload.action, payload.note ?? null, channel],
     );
 
-    // 5. Record audit log
+    // 5. Record audit log with channel, ip_address, and user_role
     const auditRes = await client.query<{ id: string }>(
       `insert into public.audit_log (user_id, action, task_id, before_value, after_value)
        values ($1, $2, $3, $4::jsonb, $5::jsonb)
@@ -270,7 +312,13 @@ export async function submitDecision(
         payload.action,
         taskId,
         JSON.stringify({ status: previousStatus, suggestion: task.suggestion }),
-        JSON.stringify({ status: nextStatus, fix: afterValue }),
+        JSON.stringify({
+          status: nextStatus,
+          fix: afterValue,
+          channel,
+          ip_address: ipAddress,
+          user_role: userRole,
+        }),
       ],
     );
 

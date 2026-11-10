@@ -2,7 +2,18 @@ import { z } from 'zod';
 
 export const roles = ['clerk', 'supervisor'] as const;
 export type Role = (typeof roles)[number];
-export const taskTypes = ['duplicate_donor', 'facility_name', 'sensor_glitch', 'logger_gap', 'missing_donor_blood_group', 'unknown_patient_blood_group', 'unconfirmed_transfer', 'donation_too_soon'] as const;
+export const taskTypes = [
+  'duplicate_donor',
+  'facility_name',
+  'sensor_glitch',
+  'logger_gap',
+  'missing_donor_blood_group',
+  'unknown_patient_blood_group',
+  'unconfirmed_transfer',
+  'donation_too_soon',
+  'invalid_isbt128',
+  'implausible',
+] as const;
 export type TaskType = (typeof taskTypes)[number];
 export const confidences = ['high', 'medium', 'low', 'rule'] as const;
 export type Confidence = (typeof confidences)[number];
@@ -68,6 +79,9 @@ export const countryConfigSchema = z.object({
   smartMatchThreshold: z.number().min(0).max(1),
   lockedFields: z.array(z.string()),
   smsTemplates: z.record(z.record(z.string())),
+  enable_fuzzy_matching: z.boolean().default(true).optional(),
+  enableFuzzyMatching: z.boolean().default(true).optional(),
+  isbt128Regex: z.string().optional(),
   fuzzyDuplicates: z.object({
     threshold: z.number().min(0).max(1),
     weightBirthDate: z.number().min(0).max(1),
