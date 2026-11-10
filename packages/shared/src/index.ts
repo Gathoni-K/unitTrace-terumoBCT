@@ -49,8 +49,8 @@ export interface Finding {
   recordIds: string[];
   suggestion: string | Record<string, unknown>;
   reason: string;
-  confidence: Confidence;
-  source: 'rule' | 'smart';
+  confidence: Confidence | number;
+  source: 'rule' | 'smart' | 'ai';
   dedupeKey?: string;
 }
 
@@ -68,6 +68,13 @@ export const countryConfigSchema = z.object({
   smartMatchThreshold: z.number().min(0).max(1),
   lockedFields: z.array(z.string()),
   smsTemplates: z.record(z.record(z.string())),
+  fuzzyDuplicates: z.object({
+    threshold: z.number().min(0).max(1),
+    weightBirthDate: z.number().min(0).max(1),
+    weightCounty: z.number().min(0).max(1),
+    weightPhone: z.number().min(0).max(1),
+    loggerGapHours: z.number().positive(),
+  }),
 });
 export type CountryConfig = z.infer<typeof countryConfigSchema>;
 

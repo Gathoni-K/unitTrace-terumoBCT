@@ -2,7 +2,12 @@ import { countryConfigSchema, type Finding } from '@workbench/shared';
 import countryJson from '../config/country.kenya.json';
 import { pool } from './lib/db.js';
 import { run as runSensorGlitches } from './detectors/sensorGlitches.js';
-import { run as runDuplicateDonors } from './detectors/duplicateDonors.js';
+import { run as runMissingDonorBloodGroup } from './detectors/missingDonorBloodGroup.js';
+import { run as runUnknownPatientBloodGroup } from './detectors/unknownPatientBloodGroup.js';
+import { run as runUnconfirmedTransfers } from './detectors/unconfirmedTransfers.js';
+import { run as runFuzzyDuplicates } from './detectors/fuzzyDuplicates.js';
+import { run as runDonationTooSoon } from './detectors/donationTooSoon.js';
+import { run as runLoggerGaps } from './detectors/loggerGaps.js';
 import { toTaskRow, type TaskRow } from './lib/taskRow.js';
 
 const config = countryConfigSchema.parse(countryJson);
@@ -53,26 +58,35 @@ async function insertTaskRows(rows: TaskRow[]): Promise<{ created: number; alrea
 }
 
 async function main(): Promise<void> {
-  console.log('Skipping facilityNames: not implemented');
-  console.log('Skipping loggerGaps: not implemented');
-  console.log('Skipping missingValues: not implemented');
+  console.log('Skipping facilityNames: not implemented (out of hackathon core defect scope)');
 
-  console.log('Running sensorGlitches detector...');
-  const glitchFindings: Finding[] = await runSensorGlitches(pool, config);
-  console.log(`Sensor glitches produced ${glitchFindings.length} findings.`);
+  const detectors = [
+    { name: 'sensorGlitches', fn: runSensorGlitches },
+    { name: 'missingDonorBloodGroup', fn: runMissingDonorBloodGroup },
+    { name: 'unknownPatientBloodGroup', fn: runUnknownPatientBloodGroup },
+    { name: 'unconfirmedTransfers', fn: runUnconfirmedTransfers },
+    { name: 'fuzzyDuplicates', fn: runFuzzyDuplicates },
+    { name: 'donationTooSoon', fn: runDonationTooSoon },
+    { name: 'loggerGaps', fn: runLoggerGaps },
+  ];
 
-  console.log('Running duplicateDonors detector...');
-  const donorFindings: Finding[] = await runDuplicateDonors(pool, config);
-  console.log(`Duplicate donors produced ${donorFindings.length} findings.`);
+  const allFindings: Finding[] = [];
 
-  const allFindings = [...glitchFindings, ...donorFindings];
+  for (const detector of detectors) {
+    console.log(`Running detector ${detector.name}...`);
+    const findings = await detector.fn(pool, config);
+    console.log(`  -> ${detector.name} produced ${findings.length} findings.`);
+    allFindings.push(...findings);
+  }
+
+  console.log(`\nPersisting ${allFindings.length} findings into public.tasks...`);
   const taskRows = allFindings.map(toTaskRow);
   const { created, alreadyExisted } = await insertTaskRows(taskRows);
 
   console.log(`\nDetection summary:`);
-  console.log(`  Total findings: ${allFindings.length}`);
-  console.log(`  Tasks created: ${created}`);
-  console.log(`  Tasks already existed: ${alreadyExisted}`);
+  console.log(`  Total findings generated: ${allFindings.length}`);
+  console.log(`  New tasks created: ${created}`);
+  console.log(`  Existing tasks skipped: ${alreadyExisted}`);
 
   await pool.end();
 }

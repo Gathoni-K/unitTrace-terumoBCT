@@ -3,46 +3,56 @@ import type { Pool } from 'pg';
 import type { CountryConfig } from '@workbench/shared';
 import { run } from './duplicateDonors.js';
 
-describe('duplicateDonors detector', () => {
-  const dummyConfig = {} as CountryConfig;
+const dummyConfig = {} as CountryConfig;
 
-  it('queries duplicate donor groups and formats findings correctly', async () => {
-    const mockQuery = vi.fn().mockResolvedValue({
-      rows: [
-        {
-          birth_date: '2006-06-24',
-          sex: 'M',
-          home_county: 'Machakos',
-          phone_last4: '3653',
-          group_count: 2,
-          donor_ids: ['DNR-000453', 'DNR-046399'],
-        },
-      ],
-    });
-    const mockPool = { query: mockQuery } as unknown as Pool;
+describe('duplicateDonors detector (naive baseline)', () => {
+  it('emits one finding per pair within each phone_last4 group', async () => {
+    const mockPool = {
+      query: vi.fn().mockResolvedValue({
+        // Group of 3 → 3 pairs; group of 2 → 1 pair
+        rows: [
+          { phone_last4: '1234', donor_ids: ['DNR-A', 'DNR-B', 'DNR-C'] },
+          { phone_last4: '5678', donor_ids: ['DNR-D', 'DNR-E'] },
+        ],
+      }),
+    } as unknown as Pool;
 
     const findings = await run(mockPool, dummyConfig);
 
-    expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(findings).toHaveLength(1);
-    expect(findings[0]).toEqual({
-      type: 'duplicate_donor',
-      recordIds: ['DNR-000453', 'DNR-046399'],
-      suggestion: {
-        action: 'merge_donors',
-        primaryDonorId: 'DNR-000453',
-        duplicateDonorIds: ['DNR-046399'],
-      },
-      reason: 'Found 2 donor records sharing birth date (2006-06-24), sex (M), home county (Machakos), and phone ending in 3653.',
-      confidence: 'rule',
-      source: 'rule',
-      dedupeKey: 'duplicate_donor:DNR-000453:DNR-046399',
-    });
+    expect(findings).toHaveLength(4); // 3 + 1 pairs
+    const keys = findings.map((f) => f.dedupeKey);
+    expect(new Set(keys).size).toBe(4); // all unique
   });
 
-  it('handles empty results gracefully', async () => {
-    const mockPool = { query: vi.fn().mockResolvedValue({ rows: [] }) } as unknown as Pool;
+  it('dedupeKey is sorted and stable regardless of array order', async () => {
+    const mockPool = {
+      query: vi.fn().mockResolvedValue({
+        rows: [{ phone_last4: '9999', donor_ids: ['DNR-Z', 'DNR-A'] }],
+      }),
+    } as unknown as Pool;
+
     const findings = await run(mockPool, dummyConfig);
-    expect(findings).toEqual([]);
+    expect(findings[0].dedupeKey).toBe('duplicate_donor:DNR-A:DNR-Z');
+    expect(findings[0].recordIds).toEqual(['DNR-A', 'DNR-Z']);
+  });
+
+  it('returns empty array when no phone_last4 group has more than one donor', async () => {
+    const mockPool = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+    } as unknown as Pool;
+
+    expect(await run(mockPool, dummyConfig)).toEqual([]);
+  });
+
+  it('finding source is rule and confidence is rule', async () => {
+    const mockPool = {
+      query: vi.fn().mockResolvedValue({
+        rows: [{ phone_last4: '0000', donor_ids: ['DNR-1', 'DNR-2'] }],
+      }),
+    } as unknown as Pool;
+
+    const findings = await run(mockPool, dummyConfig);
+    expect(findings[0].source).toBe('rule');
+    expect(findings[0].confidence).toBe('rule');
   });
 });

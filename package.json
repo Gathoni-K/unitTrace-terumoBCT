@@ -12,9 +12,11 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
+    "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:types": "supabase gen types typescript --local > packages/shared/src/db.types.ts",
     "ingest": "tsx --env-file=.env scripts/ingest.ts",
-    "detect": "tsx --env-file=.env scripts/detect.ts"
+    "detect": "tsx --env-file=.env scripts/detect.ts",
+    "measure:baseline": "tsx --env-file=.env scripts/measure-baseline.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
