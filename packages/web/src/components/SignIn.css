@@ -1,0 +1,338 @@
+/* ==========================================================================
+   packages/web/src/components/SignIn.css
+   ========================================================================== */
+
+/* Container & Meta Controls */
+.signin-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  position: relative;
+}
+.signin-meta {
+  width: 100%;
+  max-width: 56rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 0.5rem;
+}
+.signin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--surface-container);
+  border-radius: var(--border-radius-full);
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--tertiary-container);
+  border-radius: 50%;
+}
+.signin-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  background: var(--surface-container);
+  border-radius: var(--border-radius-full);
+  padding: 0.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.lang-btn {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--border-radius-full);
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.lang-btn.active {
+  background: var(--surface-container-lowest);
+  color: var(--primary-container);
+  box-shadow: var(--shadow-sm);
+}
+.theme-toggle-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+.theme-toggle-btn:hover {
+  color: var(--primary);
+}
+
+/* Main Card */
+.signin-card {
+  width: 100%;
+  max-width: 36rem;
+  background: var(--surface-container-lowest);
+  border-radius: var(--border-radius-xl);
+  padding: 2rem 2.5rem;
+  box-shadow: var(--shadow-xl);
+  position: relative;
+  overflow: hidden;
+}
+.signin-card-glow-top {
+  position: absolute;
+  top: -6rem;
+  right: -6rem;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 50%;
+  background: var(--primary-fixed);
+  opacity: 0.3;
+  filter: blur(40px);
+  pointer-events: none;
+}
+.signin-card-glow-bottom {
+  position: absolute;
+  bottom: -5rem;
+  left: -5rem;
+  width: 11rem;
+  height: 11rem;
+  border-radius: 50%;
+  background: var(--surface-container-highest);
+  opacity: 0.6;
+  filter: blur(30px);
+  pointer-events: none;
+}
+
+/* Ribbon & Brand */
+.signin-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.signin-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.signin-logo-box {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--border-radius-lg);
+  background: var(--surface-container-low);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+.logo-placeholder {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 24px;
+}
+
+/* Form Elements */
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+  z-index: 10;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  padding: 0.25rem;
+  background: var(--surface-container);
+  border-radius: var(--border-radius-xl);
+}
+.role-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  border-radius: var(--border-radius-lg);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.role-card.active {
+  background: var(--surface-container-lowest);
+  box-shadow: var(--shadow-sm);
+}
+.role-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+/* Inputs */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-field {
+  width: 100%;
+  height: 48px;
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  border: none;
+  border-radius: var(--border-radius-xl);
+  font-size: 16px;
+  outline: none;
+  transition: all 0.2s;
+}
+.input-field:focus {
+  background: var(--surface-container-lowest);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.input-icon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--on-surface-variant);
+  pointer-events: none;
+  font-size: 20px;
+}
+.input-icon-right {
+  position: absolute;
+  right: 0.875rem;
+  color: var(--on-surface-variant);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pl-10 {
+  padding-left: 2.75rem;
+}
+.pr-10 {
+  padding-right: 2.75rem;
+}
+
+/* Button */
+.btn-primary {
+  height: 48px;
+  background: var(--primary-container);
+  color: var(--on-primary);
+  border: none;
+  border-radius: var(--border-radius-xl);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover {
+  background: var(--primary);
+}
+
+/* Notices */
+.notice-box {
+  padding: 0.875rem;
+  background: var(--surface-container-low);
+  border-radius: var(--border-radius-xl);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.signin-footer {
+  width: 100%;
+  max-width: 36rem;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Utility classes for this component */
+.w-full {
+  width: 100%;
+}
+.mt-1 {
+  margin-top: 0.25rem;
+}
+.mt-2 {
+  margin-top: 0.5rem;
+}
+.mt-4 {
+  margin-top: 1rem;
+}
+.mb-1 {
+  margin-bottom: 0.25rem;
+}
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+.block {
+  display: block;
+}
+.text-left {
+  text-align: left;
+}
+.flex {
+  display: flex;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.items-center {
+  align-items: center;
+}
+.gap-2 {
+  gap: 0.5rem;
+}
+.text-sm {
+  font-size: 14px;
+}
+.text-primary {
+  color: var(--primary-container);
+}
+.text-on-surface {
+  color: var(--on-surface);
+}
+.text-on-surface-variant {
+  color: var(--on-surface-variant);
+}
+.text-outline-variant {
+  color: var(--outline-variant);
+}
