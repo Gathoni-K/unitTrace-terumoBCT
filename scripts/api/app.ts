@@ -1,7 +1,7 @@
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 import type { Pool } from 'pg';
-import { listTasks, getTask, submitDecision, type DecisionPayload } from './tasksService.js';
+import { listTasks, getTask, revealTask, submitDecision, type DecisionPayload } from './tasksService.js';
 import { computeBeforeAfterMetrics } from '../metrics/before-after.js';
 
 function setCorsHeaders(res: ServerResponse): void {
@@ -85,7 +85,33 @@ export function createApiHandler(pool: Pool) {
         return;
       }
 
-      // 4. GET /api/tasks/:id
+      // 4. POST or GET /api/tasks/:id/reveal (PII Reveal with access_log audit)
+      const revealMatch = /^\/api\/tasks\/([^/]+)\/reveal$/.exec(pathname);
+      if ((method === 'POST' || method === 'GET') && revealMatch) {
+        const taskId = revealMatch[1];
+        let userId: string | undefined;
+        if (method === 'POST') {
+          const body = await readBodyJson(req);
+          userId = (body.user_id as string) ?? undefined;
+        } else {
+          userId = parsedUrl.searchParams.get('user_id') ?? undefined;
+        }
+
+        try {
+          const task = await revealTask(pool, taskId, userId);
+          sendJson(res, 200, task);
+        } catch (revealErr) {
+          const message = revealErr instanceof Error ? revealErr.message : String(revealErr);
+          if (message.includes('not found')) {
+            sendJson(res, 404, { error: message });
+          } else {
+            throw revealErr;
+          }
+        }
+        return;
+      }
+
+      // 5. GET /api/tasks/:id
       const getTaskMatch = /^\/api\/tasks\/([^/]+)$/.exec(pathname);
       if (method === 'GET' && getTaskMatch) {
         const taskId = getTaskMatch[1];
