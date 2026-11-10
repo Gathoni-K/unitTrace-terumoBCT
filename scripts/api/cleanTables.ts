@@ -123,5 +123,17 @@ export async function applyDecisionFix(
        where request_id = $2`,
       [patientBloodGroup, requestId],
     );
+  } else if (task.type === 'implausible' || task.type === 'facility_name') {
+    const requestId = recordIds[0];
+    const expectedName =
+      (fixObj.expected_name as string) || (fixObj.facility_name as string) || (fixObj.name as string);
+    if (requestId && expectedName) {
+      await client.query(
+        `update public.requests_clean
+         set facility_name_raw = $1, resolution_status = 'normalized'
+         where request_id = $2`,
+        [expectedName, requestId],
+      );
+    }
   }
 }

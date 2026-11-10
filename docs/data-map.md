@@ -1,24 +1,44 @@
 # Data Minimisation and PII Access Map
 
-This document establishes the data governance, minimisation policy, sensitivity classification, and role-based access control (RBAC) boundaries for all entities loaded into UnitTrace.
+This document establishes the data governance, minimisation policy, sensitivity classification, role-based access control (RBAC) boundaries, and Kenya ODPC / DPIA compliance posture for all entities loaded into UnitTrace.
 
 ---
 
-## 1. Governance Principles
+## 1. Governance Principles & Security Evidence
 
-1. **Minimisation at Ingestion**: Only fields required for identification, blood safety, cold chain monitoring, or logistics are loaded into persistent application tables.
-2. **Masking by Default**: All API views presented to frontline clerks mask personal identifiers (`birth_date` -> `YYYY-XX-XX`, `phone_last4` -> `XXXXXNNNN`).
-3. **Audited Break-Glass Reveal**: Full PII is accessible strictly through an auditable reveal endpoint (`POST /api/tasks/:id/reveal`), which immutably logs the accessing user ID, timestamp, and target entity into `public.access_log`.
-4. **Separation of Roles**:
-   - **Clerk**: Operational review of tasks, accepting/rejecting suggestions with masked PII.
-   - **Supervisor**: Escalation review, approval of facility aliases, unmasking donor PII for identity dispute resolution.
+1. **Minimisation at Ingestion**: Only fields strictly required for donor safety, clinical compatibility, cold chain monitoring, or blood logistics are ingested into persistent application tables.
+2. **Masking by Default**: All API views presented to frontline operators mask personal identifiers:
+   - `birth_date`: Masked to year only (`1995-01-01` → `1995-XX-XX`).
+   - `phone_last4`: Masked to generic placeholder (`XXXX`).
+3. **Audited Break-Glass Reveal**: Full PII is accessible strictly through an auditable reveal endpoint (`POST /api/tasks/:id/reveal`), which immutably logs the accessing user UUID, timestamp, event type, and target entity into `public.access_log`.
+4. **Separation of Roles & Shared Login Mitigation**:
+   - **Clerk**: Can review missing data and format issues (`missing_donor_blood_group`, `unknown_patient_blood_group`, `unconfirmed_transfer`, `inconsistent_facility_name`). **Forbidden (HTTP 403)** from merging duplicate donors.
+   - **Supervisor**: Authorized to adjudicate duplicate donor merges, approve facility aliases, and trigger break-glass PII unmasking.
    - **Auditor / System**: Read-only oversight of `public.audit_log` and `public.access_log`.
+5. **ODPC Registration & DPIA Compliance**:
+   - Aligned with the **Kenya Data Protection Act (2019)** regulations enforced by the Office of the Data Protection Commissioner (ODPC).
+   - Data Protection Impact Assessment (DPIA) conducted to eliminate the audit trail vulnerability of shared hospital workstations by tracking `ip_address`, `user_role`, and `channel` on every decision.
+   - Cryptographic safeguards: **TLS 1.3** in transit and **AES-256** encryption at rest.
 
 ---
 
-## 2. Table-by-Table Data Dictionary & Access Classification
+## 2. Excluded Fields (Data Minimisation by Design)
 
-### 2.1 `public.donors` & `public.donors_clean`
+To uphold the principle of storage limitation and privacy-by-design, UnitTrace intentionally excludes superfluous personal fields present in legacy health datasets:
+
+| Excluded Field | Source Presence | Reason for Exclusion / Minimisation |
+|---|---|---|
+| `preferred_channel` | Legacy donor forms | Excluded; notifications strictly follow verified institutional registry channels. |
+| `consent_to_contact`| Physical intake records | Managed at collection point phlebotomy; not persisted in processing workbench. |
+| `national_id` / `passport_no` | Government ID | Never ingested; replaced with pseudonymised `donor_id` (`DNR-XXXXXX`). |
+| `full_phone_number` | Raw donor contact | Truncated to `phone_last4` at intake to prevent mass exfiltration. |
+| `patient_name` | Hospital orders | Never captured; requests reference only `patient_blood_group` and `clinical_indication`. |
+
+---
+
+## 3. Table-by-Table Data Dictionary & Access Classification
+
+### 3.1 `public.donors` & `public.donors_clean`
 
 | Field | Data Type | Purpose | Sensitivity | Default API Visibility | Role Permitted to Unmask |
 |---|---|---|---|---|---|
@@ -29,13 +49,13 @@ This document establishes the data governance, minimisation policy, sensitivity 
 | `home_county` | `text` | Regional rebalancing & duplicate disambiguation | Low | Unmasked (County name) | All |
 | `registration_date` | `date` | Donor history and seniority | Low | Unmasked (`YYYY-MM-DD`) | All |
 | `registration_site_id` | `text` | Source facility reference | Internal | Unmasked (`RBTC-NBO`) | All |
-| `phone_last4` | `text` | SMS notification routing & duplicate matching | **PII (Medium)** | **Masked** (`XXXXX1234`) | Supervisor via Reveal |
+| `phone_last4` | `text` | SMS notification routing & duplicate matching | **PII (Medium)** | **Masked** (`XXXX`) | Supervisor via Reveal |
 | `merged_into` | `text` | Target donor ID following duplicate consolidation | Internal | Unmasked | All |
 | `resolution_status` | `text` | Active / Merged lifecycle state | Internal | Unmasked | All |
 
 ---
 
-### 2.2 `public.requests` & `public.requests_clean`
+### 3.2 `public.requests` & `public.requests_clean`
 
 | Field | Data Type | Purpose | Sensitivity | Default API Visibility |
 |---|---|---|---|---|
@@ -48,7 +68,7 @@ This document establishes the data governance, minimisation policy, sensitivity 
 
 ---
 
-### 2.3 `public.transfers` & `public.transfers_clean`
+### 3.3 `public.transfers` & `public.transfers_clean`
 
 | Field | Data Type | Purpose | Sensitivity | Default API Visibility |
 |---|---|---|---|---|
@@ -61,7 +81,7 @@ This document establishes the data governance, minimisation policy, sensitivity 
 
 ---
 
-### 2.4 `public.units` & `public.donations`
+### 3.4 `public.units` & `public.donations`
 
 | Field | Data Type | Purpose | Sensitivity | Default API Visibility |
 |---|---|---|---|---|
@@ -74,7 +94,7 @@ This document establishes the data governance, minimisation policy, sensitivity 
 
 ---
 
-### 2.5 `public.temperature_logs`
+### 3.5 `public.temperature_logs`
 
 | Field | Data Type | Purpose | Sensitivity | Default API Visibility |
 |---|---|---|---|---|
@@ -84,10 +104,9 @@ This document establishes the data governance, minimisation policy, sensitivity 
 
 ---
 
-### 2.6 `public.access_log` & `public.audit_log`
+### 3.6 `public.access_log` & `public.audit_log`
 
-| Table | Purpose | Retention & Access Policy |
-|---|---|---|
-| `public.access_log` | Logs every PII unmasking event (`task_pii_reveal`), including actor user UUID, timestamp, and target task ID. | Append-only. RLS restricted to supervisor and auditor roles. |
-| `public.audit_log` | Records state transitions, workbench decisions (accept, change, reject), and before/after payloads. | Immutable audit trail. Exported for national compliance. |
-
+| Table | Purpose | Tracked Fields | Retention & Access Policy |
+|---|---|---|---|
+| `public.access_log` | Logs every PII unmasking event (`task_pii_reveal`). | `id`, `at`, `user_id`, `event`, `record_type`, `record_id` | Append-only. RLS restricted to supervisor and compliance auditor roles. |
+| `public.audit_log` | Records state transitions, workbench decisions (accept, change, reject), and before/after payloads. | `id`, `at`, `user_id`, `action`, `task_id`, `before_value`, `after_value` (includes `channel`, `ip_address`, `user_role`) | Immutable audit trail. Exported for national health governance & DHIS2 compliance. |

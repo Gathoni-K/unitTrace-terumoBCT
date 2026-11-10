@@ -28,6 +28,8 @@ export interface DecisionPayload {
   action: 'accept' | 'change' | 'reject' | 'approve' | 'send_back' | 'escalate';
   modified_suggestion?: Record<string, unknown>;
   user_id?: string;
+  user_role?: 'clerk' | 'supervisor';
+  ip_address?: string;
   channel?: 'web' | 'offline_sync' | 'sms' | 'ussd';
   note?: string;
 }
@@ -257,6 +259,13 @@ export async function submitDecision(
     const task = taskRes.rows[0];
     const previousStatus = task.status;
 
+    // RBAC: duplicate_donor merges strictly require 'supervisor' role
+    if (task.type === 'duplicate_donor' && payload.user_role !== 'supervisor') {
+      const forbiddenError = new Error('Forbidden: Only supervisors are authorized to decide on duplicate donor merges.');
+      (forbiddenError as { statusCode?: number }).statusCode = 403;
+      throw forbiddenError;
+    }
+
     // 2. Compute after_value and next_status
     let afterValue: unknown = null;
     let nextStatus = previousStatus;
@@ -284,13 +293,16 @@ export async function submitDecision(
     // 4. Record decision
     const channel = payload.channel ?? 'web';
     const userId = payload.user_id ?? null;
+    const userRole = payload.user_role ?? 'clerk';
+    const ipAddress = payload.ip_address ?? '127.0.0.1';
+
     await client.query(
-      `insert into public.decisions (task_id, user_id, action, note, channel)
-       values ($1, $2, $3, $4, $5)`,
-      [taskId, userId, payload.action, payload.note ?? null, channel],
+      `insert into public.decisions (task_id, user_id, role, action, note, channel)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [taskId, userId, userRole, payload.action, payload.note ?? null, channel],
     );
 
-    // 5. Record audit log
+    // 5. Record audit log with channel, ip_address, and user_role
     const auditRes = await client.query<{ id: string }>(
       `insert into public.audit_log (user_id, action, task_id, before_value, after_value)
        values ($1, $2, $3, $4::jsonb, $5::jsonb)
@@ -300,7 +312,13 @@ export async function submitDecision(
         payload.action,
         taskId,
         JSON.stringify({ status: previousStatus, suggestion: task.suggestion }),
-        JSON.stringify({ status: nextStatus, fix: afterValue }),
+        JSON.stringify({
+          status: nextStatus,
+          fix: afterValue,
+          channel,
+          ip_address: ipAddress,
+          user_role: userRole,
+        }),
       ],
     );
 

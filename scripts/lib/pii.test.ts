@@ -7,15 +7,15 @@ describe('PII Masking utilities', () => {
     expect(maskBirthDate('2002-12-31')).toBe('2002-XX-XX');
   });
 
-  it('masks phone last 4 digits to XXXXXNNNN', () => {
-    expect(maskPhoneLast4('1234')).toBe('XXXXX1234');
-    expect(maskPhoneLast4('XXXXX1234')).toBe('XXXXX1234');
+  it('masks phone last 4 digits to XXXX', () => {
+    expect(maskPhoneLast4('1234')).toBe('XXXX');
+    expect(maskPhoneLast4('7788')).toBe('XXXX');
   });
 
   it('masks dates and phone mentions in reason text', () => {
     const raw = 'Donors DNR-1 and DNR-2 share the same phone last 4 digits (5678) and born on 1988-11-23.';
     const masked = maskText(raw);
-    expect(masked).toBe('Donors DNR-1 and DNR-2 share the same phone last 4 digits (XXXXX5678) and born on 1988-XX-XX.');
+    expect(masked).toBe('Donors DNR-1 and DNR-2 share the same phone last 4 digits (XXXX) and born on 1988-XX-XX.');
   });
 
   it('masks nested object fields with PII keys', () => {
@@ -31,7 +31,7 @@ describe('PII Masking utilities', () => {
 
     const masked = maskObjectPii(obj);
     expect(masked.donor_details.birth_date).toBe('1995-XX-XX');
-    expect(masked.donor_details.phone_last4).toBe('XXXXX9876');
+    expect(masked.donor_details.phone_last4).toBe('XXXX');
     expect(masked.donor_details.home_county).toBe('Kisumu');
   });
 
@@ -50,9 +50,9 @@ describe('PII Masking utilities', () => {
     };
 
     const masked = maskTaskPii(task);
-    expect(masked.reason).toContain('XXXXX1234');
+    expect(masked.reason).toContain('XXXX');
     expect((masked.suggestion as { birth_date: string }).birth_date).toBe('1991-XX-XX');
-    expect((masked.suggestion as { phone_last4: string }).phone_last4).toBe('XXXXX1234');
+    expect((masked.suggestion as { phone_last4: string }).phone_last4).toBe('XXXX');
   });
 });
 

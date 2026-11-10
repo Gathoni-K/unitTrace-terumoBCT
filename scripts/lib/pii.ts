@@ -11,14 +11,14 @@ export function maskBirthDate(dateStr: string): string {
 }
 
 export function maskPhoneLast4(phoneLast4: string): string {
-  if (phoneLast4.startsWith('XXXXX')) return phoneLast4;
-  return `XXXXX${phoneLast4}`;
+  void phoneLast4;
+  return 'XXXX';
 }
 
 export function maskText(text: string): string {
   let masked = text.replace(/\b(\d{4})-\d{2}-\d{2}\b/g, '$1-XX-XX');
-  // Match "phone last 4 digits (1234)" or "phone (1234)"
-  masked = masked.replace(/(phone(?:\s+last\s+4\s+digits)?\s*\()(\d{4})(\))/gi, '$1XXXXX$2$3');
+  // Match "phone last 4 digits (1234)" or "phone (1234)" -> "... (XXXX)"
+  masked = masked.replace(/(phone(?:\s+last\s+4\s+digits)?\s*\()(\d{4})(\))/gi, '$1XXXX$3');
   return masked;
 }
 
