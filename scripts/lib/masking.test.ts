@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { maskBirthDate, maskPhoneLast4, maskText, maskObjectPii, maskTaskPii } from './pii.js';
+import { maskBirthDate, maskPhoneLast4, maskText, maskObjectPii, maskTaskPii } from './masking.js';
 
 describe('PII Masking utilities', () => {
   it('masks birth dates to year-XX-XX format', () => {
