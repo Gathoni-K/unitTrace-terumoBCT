@@ -1,5 +1,6 @@
-import { countryConfigSchema, type Finding } from '@workbench/shared';
-import countryJson from '../config/country.kenya.json';
+import fs from 'node:fs';
+import path from 'node:path';
+import { countryConfigSchema, type CountryConfig, type Finding } from '@workbench/shared';
 import { pool } from './lib/db.js';
 import { run as runSensorGlitches } from './detectors/sensorGlitches.js';
 import { run as runMissingDonorBloodGroup } from './detectors/missingDonorBloodGroup.js';
@@ -13,7 +14,17 @@ import { run as runInvalidIsbt128 } from './detectors/invalidIsbt128.js';
 import { run as runInconsistentFacilityName } from './detectors/inconsistentFacilityName.js';
 import { toTaskRow, type TaskRow } from './lib/taskRow.js';
 
-const config = countryConfigSchema.parse(countryJson);
+function loadConfig(): CountryConfig {
+  const configArg = process.argv.find((arg) => arg.startsWith('--config='));
+  const configPath = configArg
+    ? path.resolve(process.cwd(), configArg.slice('--config='.length))
+    : path.resolve(process.cwd(), 'config/country.kenya.json');
+
+  const raw = fs.readFileSync(configPath, 'utf-8');
+  const parsed = countryConfigSchema.parse(JSON.parse(raw));
+  console.log(`Active country config: ${parsed.displayName} (${path.relative(process.cwd(), configPath)})`);
+  return parsed;
+}
 
 async function insertTaskRows(rows: TaskRow[]): Promise<{ created: number; alreadyExisted: number }> {
   if (rows.length === 0) {
@@ -61,6 +72,7 @@ async function insertTaskRows(rows: TaskRow[]): Promise<{ created: number; alrea
 }
 
 async function main(): Promise<void> {
+  const config = loadConfig();
   const noAiFlag = process.argv.includes('--no-ai');
   const enableFuzzy = config.enable_fuzzy_matching ?? config.enableFuzzyMatching ?? true;
   const isFallback = noAiFlag || !enableFuzzy;
