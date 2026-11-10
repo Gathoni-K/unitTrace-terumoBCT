@@ -41,5 +41,21 @@ describe('toTaskRow', () => {
     expect(row.dedupe_key).toBeNull();
     expect(row.suggestion).toBe(JSON.stringify('manual check'));
   });
+
+  it('maps AI source to smart and numeric confidence to category', () => {
+    const finding: Finding = {
+      type: 'duplicate_donor',
+      recordIds: ['DNR-1', 'DNR-2'],
+      suggestion: { action: 'review_merge', score: 0.95 },
+      reason: 'Fuzzy match',
+      confidence: 0.95,
+      source: 'ai',
+      dedupeKey: 'duplicate_donor:DNR-1:DNR-2',
+    };
+
+    const row = toTaskRow(finding);
+    expect(row.source).toBe('smart');
+    expect(row.confidence).toBe('high');
+  });
 });
 
