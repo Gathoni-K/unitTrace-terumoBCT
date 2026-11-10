@@ -220,15 +220,15 @@ Detailed methodology is documented in [`docs/aiMethodology.md`](docs/aiMethodolo
 
 | Name | Role | Country | Presenting Friday (in person / online) |
 |------|------|---------|-----------------------------------------|
-| Natasha Wambui Hinga | Full Stack & Data Engineering | Kenya | In person |
-| Gathoni Karume | Full Stack & Systems Architecture | Kenya | In person |
+| Natasha Wambui Hinga | Full Stack Engineer | Kenya | In person |
+| Gathoni Karume | Data Engineer & Backend Engineer | Kenya | In person |
 
 ---
 
 ## Known limits and next steps
 
 - **Known limits:**
-  - SMS workflow requires an active Africa's Talking gateway account or local sandbox simulator.
+  - SMS workflow requires an active Africa's Talking gateway account, we are relying on the sandbox simulator.
   - Production deployment requires integration with hospital EMRs (e.g., KenyaEMR / UgandaEMR) via dedicated FHIR endpoints.
   - Break-glass unmasking is logged to `public.access_log`; real-time SMS alerts to facility directors upon unmasking are planned.
 - **Next steps:**
