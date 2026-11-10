@@ -100,3 +100,4 @@ describe('Outbound SMS Utility (sendSms)', () => {
     expect(result.error).toContain('AFRICASTALKING_API_KEY is not defined');
   });
 });
+
