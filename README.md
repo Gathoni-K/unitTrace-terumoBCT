@@ -51,14 +51,3 @@ The dataset is synthetic for the hackathon. Raw files are not committed.
 
 - GitHub Copilot: scaffolding and typed placeholder generation.
 
-## Limitations
-
-Detectors, persistence, authentication, synchronization, and production screens are TODO.
-
-## Backend handoff
-
-The backend developer must wire the `DataClient` implementation, real auth, data loading, detectors, and the SMS webhook. Supabase is scaffolded but not started by the build.
-
-## Backend configuration
-
-Configure Supabase keys, create Auth users, and add their clerk/supervisor profiles using [supabase/seed.sql](supabase/seed.sql). `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are the only browser-safe values. `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are script-only.
