@@ -1,0 +1,209 @@
+{
+  "resourceType": "Bundle",
+  "id": "unittrace-clean-donors-bundle",
+  "type": "collection",
+  "timestamp": "2026-11-10T18:45:57.390Z",
+  "total": 5,
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:donor-DNR-000002",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "DNR-000002",
+        "identifier": [
+          {
+            "system": "https://kenya.health.gov/identifiers/donors",
+            "value": "DNR-000002"
+          }
+        ],
+        "active": true,
+        "gender": "male",
+        "birthDate": "2004-12-19",
+        "address": [
+          {
+            "use": "home",
+            "district": "Meru",
+            "country": "KE"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "XXXXX7841",
+            "use": "mobile"
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-bloodGroup",
+            "valueString": "B+"
+          },
+          {
+            "url": "https://kenya.health.gov/fhir/StructureDefinition/donor-registration-date",
+            "valueDate": "2025-09-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:donor-DNR-000006",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "DNR-000006",
+        "identifier": [
+          {
+            "system": "https://kenya.health.gov/identifiers/donors",
+            "value": "DNR-000006"
+          }
+        ],
+        "active": true,
+        "gender": "male",
+        "birthDate": "1981-10-11",
+        "address": [
+          {
+            "use": "home",
+            "district": "Meru",
+            "country": "KE"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "XXXXX1517",
+            "use": "mobile"
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-bloodGroup",
+            "valueString": "O+"
+          },
+          {
+            "url": "https://kenya.health.gov/fhir/StructureDefinition/donor-registration-date",
+            "valueDate": "2025-09-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:donor-DNR-000007",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "DNR-000007",
+        "identifier": [
+          {
+            "system": "https://kenya.health.gov/identifiers/donors",
+            "value": "DNR-000007"
+          }
+        ],
+        "active": true,
+        "gender": "male",
+        "birthDate": "1977-08-21",
+        "address": [
+          {
+            "use": "home",
+            "district": "Meru",
+            "country": "KE"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "XXXXX9649",
+            "use": "mobile"
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-bloodGroup",
+            "valueString": "A+"
+          },
+          {
+            "url": "https://kenya.health.gov/fhir/StructureDefinition/donor-registration-date",
+            "valueDate": "2025-09-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:donor-DNR-000009",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "DNR-000009",
+        "identifier": [
+          {
+            "system": "https://kenya.health.gov/identifiers/donors",
+            "value": "DNR-000009"
+          }
+        ],
+        "active": true,
+        "gender": "female",
+        "birthDate": "1978-09-08",
+        "address": [
+          {
+            "use": "home",
+            "district": "Meru",
+            "country": "KE"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "XXXXX4149",
+            "use": "mobile"
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-bloodGroup",
+            "valueString": "O+"
+          },
+          {
+            "url": "https://kenya.health.gov/fhir/StructureDefinition/donor-registration-date",
+            "valueDate": "2025-09-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:donor-DNR-000013",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "DNR-000013",
+        "identifier": [
+          {
+            "system": "https://kenya.health.gov/identifiers/donors",
+            "value": "DNR-000013"
+          }
+        ],
+        "active": true,
+        "gender": "female",
+        "birthDate": "2004-03-28",
+        "address": [
+          {
+            "use": "home",
+            "district": "Nairobi",
+            "country": "KE"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "XXXXX8649",
+            "use": "mobile"
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-bloodGroup",
+            "valueString": "O-"
+          },
+          {
+            "url": "https://kenya.health.gov/fhir/StructureDefinition/donor-registration-date",
+            "valueDate": "2025-09-02"
+          }
+        ]
+      }
+    }
+  ]
+}
