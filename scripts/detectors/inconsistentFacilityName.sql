@@ -9,3 +9,4 @@ join public.facilities f on r.facility_id = f.facility_id
 where r.facility_name_raw is not null
   and lower(trim(r.facility_name_raw)) != lower(trim(f.name))
 order by r.request_id;
+

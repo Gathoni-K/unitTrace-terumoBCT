@@ -38,3 +38,4 @@ export async function run(pool: Pool, config: CountryConfig): Promise<Finding[]>
     dedupeKey: `inconsistent_facility_name:${row.request_id}`,
   }));
 }
+

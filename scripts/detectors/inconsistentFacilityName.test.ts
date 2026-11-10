@@ -72,3 +72,4 @@ describe('inconsistentFacilityName detector', () => {
     expect(findings[0].dedupeKey).toBe('inconsistent_facility_name:REQ-1');
   });
 });
+
