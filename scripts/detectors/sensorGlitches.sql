@@ -1,0 +1,1 @@
+-- TODO: identify configured sensorGlitchValues and temperatures outside safeTempRange.

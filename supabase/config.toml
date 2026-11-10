@@ -1,0 +1,19 @@
+project_id = "data-quality-workbench"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
+
+[studio]
+enabled = true
+
+[inbucket]
+enabled = true
+
+[auth]
+enabled = true
+
+[analytics]
+enabled = false
