@@ -11,8 +11,12 @@ interface DonationTooSoonRow {
 }
 
 export async function run(pool: Pool, config: CountryConfig): Promise<Finding[]> {
-  const maleMinDays = config.minDonationGapMonths?.male ? config.minDonationGapMonths.male * 30 : 90;
-  const femaleMinDays = config.minDonationGapMonths?.female ? config.minDonationGapMonths.female * 30 : 120;
+  const maleMinDays =
+    config.min_donation_interval_days_male ??
+    (config.minDonationGapMonths?.male ? config.minDonationGapMonths.male * 30 : 90);
+  const femaleMinDays =
+    config.min_donation_interval_days_female ??
+    (config.minDonationGapMonths?.female ? config.minDonationGapMonths.female * 30 : 120);
 
   const query = `
     with ranked_donations as (
