@@ -28,6 +28,7 @@ export interface DecisionPayload {
   action: 'accept' | 'change' | 'reject' | 'approve' | 'send_back' | 'escalate';
   modified_suggestion?: Record<string, unknown>;
   user_id?: string;
+  actor?: string;
   user_role?: 'clerk' | 'supervisor';
   ip_address?: string;
   channel?: 'web' | 'offline_sync' | 'sms' | 'ussd';
@@ -295,11 +296,12 @@ export async function submitDecision(
     const userId = payload.user_id ?? null;
     const userRole = payload.user_role ?? 'clerk';
     const ipAddress = payload.ip_address ?? '127.0.0.1';
+    const note = payload.note ?? (payload.actor ? `Action by ${payload.actor}` : null);
 
     await client.query(
       `insert into public.decisions (task_id, user_id, role, action, note, channel)
        values ($1, $2, $3, $4, $5, $6)`,
-      [taskId, userId, userRole, payload.action, payload.note ?? null, channel],
+      [taskId, userId, userRole, payload.action, note, channel],
     );
 
     // 5. Record audit log with channel, ip_address, and user_role
@@ -316,6 +318,7 @@ export async function submitDecision(
           status: nextStatus,
           fix: afterValue,
           channel,
+          actor: payload.actor ?? null,
           ip_address: ipAddress,
           user_role: userRole,
         }),

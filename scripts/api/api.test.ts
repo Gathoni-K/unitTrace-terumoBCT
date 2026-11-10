@@ -308,5 +308,131 @@ describe('Task Management API', () => {
     expect(json.summaryText).toContain('1,046');
     expect(json.improvementPercentage).toBe('100.0%');
   });
+
+  describe("Africa's Talking Inbound SMS Webhook", () => {
+    it("processes '41 OK' via JSON and records SMS decision", async () => {
+      mockClientQuery
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              task_id: 41,
+              type: 'missing_donor_blood_group',
+              status: 'open',
+              record_ids: ['DNR-001'],
+              suggestion: { bloodGroup: 'O+' },
+            },
+          ],
+        })
+        .mockResolvedValueOnce({}) // UPDATE
+        .mockResolvedValueOnce({}) // INSERT decisions
+        .mockResolvedValueOnce({ rows: [{ id: '888' }] }) // INSERT audit_log
+        .mockResolvedValueOnce({}) // ensureCleanTables DDL
+        .mockResolvedValueOnce({}) // ensureCleanTables insert
+        .mockResolvedValueOnce({}) // applyDecisionFix
+        .mockResolvedValueOnce({}); // COMMIT
+
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '+254700000000',
+          text: '41 OK',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/plain');
+      const text = await res.text();
+      expect(text).toBe('Task 41 accepted. Logged to audit trail.');
+
+      // Verify channel passed was 'sms'
+      const decisionInsertCall = mockClientQuery.mock.calls.find((c) =>
+        c[0].includes('insert into public.decisions'),
+      );
+      expect(decisionInsertCall).toBeDefined();
+      expect(decisionInsertCall?.[1]).toContain('sms');
+    });
+
+    it("processes URL-encoded form data '41 NO' and records rejection", async () => {
+      mockClientQuery
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              task_id: 41,
+              type: 'unconfirmed_transfer',
+              status: 'open',
+              record_ids: ['TRF-001'],
+              suggestion: {},
+            },
+          ],
+        })
+        .mockResolvedValueOnce({}) // UPDATE
+        .mockResolvedValueOnce({}) // INSERT decisions
+        .mockResolvedValueOnce({ rows: [{ id: '889' }] }) // INSERT audit_log
+        .mockResolvedValueOnce({}) // ensureCleanTables DDL
+        .mockResolvedValueOnce({}) // ensureCleanTables insert
+        .mockResolvedValueOnce({}); // COMMIT (action === 'reject' does not run applyDecisionFix queries)
+
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'from=%2B254700000000&text=41+NO',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/plain');
+      const text = await res.text();
+      expect(text).toBe('Task 41 rejected. Logged to audit trail.');
+    });
+
+    it("returns 200 with format error on invalid text message", async () => {
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '+254700000000',
+          text: 'hello',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/plain');
+      const text = await res.text();
+      expect(text).toBe("Error: Invalid format. Reply '41 OK' or '41 NO'.");
+    });
+
+    it("enforces supervisor merge restriction over SMS", async () => {
+      mockClientQuery
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              task_id: 99,
+              type: 'duplicate_donor',
+              status: 'open',
+              record_ids: ['DNR-001', 'DNR-002'],
+              suggestion: {},
+            },
+          ],
+        })
+        .mockResolvedValueOnce({}); // ROLLBACK
+
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '+254700000000',
+          text: '99 OK',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/plain');
+      const text = await res.text();
+      expect(text).toBe('Error: Only supervisors can approve merges. Please use the web app.');
+    });
+  });
 });
 

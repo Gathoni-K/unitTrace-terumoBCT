@@ -7,7 +7,7 @@ import { computeBeforeAfterMetrics } from '../metrics/before-after.js';
 function setCorsHeaders(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-role, x-user-id');
 }
 
 function sendJson(res: ServerResponse, statusCode: number, data: unknown): void {
@@ -17,7 +17,14 @@ function sendJson(res: ServerResponse, statusCode: number, data: unknown): void 
   res.end(JSON.stringify(data));
 }
 
-function readBodyJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+function sendText(res: ServerResponse, statusCode: number, text: string): void {
+  setCorsHeaders(res);
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.statusCode = statusCode;
+  res.end(text);
+}
+
+function readRequestBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => {
@@ -29,14 +36,35 @@ function readBodyJson(req: IncomingMessage): Promise<Record<string, unknown>> {
       }
     });
     req.on('end', () => {
-      if (!body.trim()) {
+      const trimmed = body.trim();
+      if (!trimmed) {
         resolve({});
         return;
       }
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('application/x-www-form-urlencoded')) {
+        const params = new URLSearchParams(trimmed);
+        const result: Record<string, unknown> = {};
+        for (const [key, val] of params.entries()) {
+          result[key] = val;
+        }
+        resolve(result);
+        return;
+      }
       try {
-        resolve(JSON.parse(body));
-      } catch (e) {
-        reject(new Error(`Invalid JSON: ${(e as Error).message}`));
+        resolve(JSON.parse(trimmed));
+      } catch {
+        // Fallback to URL-encoded parsing if JSON parsing fails
+        try {
+          const params = new URLSearchParams(trimmed);
+          const result: Record<string, unknown> = {};
+          for (const [key, val] of params.entries()) {
+            result[key] = val;
+          }
+          resolve(result);
+        } catch {
+          resolve({});
+        }
       }
     });
     req.on('error', reject);
@@ -91,7 +119,7 @@ export function createApiHandler(pool: Pool) {
         const taskId = revealMatch[1];
         let userId: string | undefined;
         if (method === 'POST') {
-          const body = await readBodyJson(req);
+          const body = await readRequestBody(req);
           userId = (body.user_id as string) ?? undefined;
         } else {
           userId = parsedUrl.searchParams.get('user_id') ?? undefined;
@@ -128,7 +156,7 @@ export function createApiHandler(pool: Pool) {
       const decisionMatch = /^\/api\/tasks\/([^/]+)\/decision$/.exec(pathname);
       if (method === 'POST' && decisionMatch) {
         const taskId = decisionMatch[1];
-        const body = await readBodyJson(req);
+        const body = await readRequestBody(req);
 
         const action = body.action as DecisionPayload['action'];
         if (!action || !['accept', 'change', 'reject', 'approve', 'send_back', 'escalate'].includes(action)) {
@@ -167,6 +195,46 @@ export function createApiHandler(pool: Pool) {
             return;
           }
           throw decisionErr;
+        }
+        return;
+      }
+
+      // 6. POST /api/webhooks/africastalking/sms
+      if (method === 'POST' && pathname === '/api/webhooks/africastalking/sms') {
+        const body = await readRequestBody(req);
+        const from = String(body.from || body.phoneNumber || '').trim();
+        const text = String(body.text || '').trim();
+
+        const match = /^(\d+)\s+(OK|NO)$/i.exec(text);
+        if (!match) {
+          sendText(res, 200, "Error: Invalid format. Reply '41 OK' or '41 NO'.");
+          return;
+        }
+
+        const taskId = match[1];
+        const isOk = match[2].toUpperCase() === 'OK';
+        const action = isOk ? 'accept' : 'reject';
+
+        try {
+          await submitDecision(pool, taskId, {
+            action,
+            channel: 'sms',
+            actor: from || undefined,
+            user_role: 'clerk',
+            note: `SMS reply from ${from || 'mobile'}`,
+          });
+          const verb = isOk ? 'accepted' : 'rejected';
+          sendText(res, 200, `Task ${taskId} ${verb}. Logged to audit trail.`);
+        } catch (decisionErr) {
+          const msg = decisionErr instanceof Error ? decisionErr.message : String(decisionErr);
+          if (msg.includes('supervisors') || (decisionErr as { statusCode?: number }).statusCode === 403) {
+            sendText(res, 200, 'Error: Only supervisors can approve merges. Please use the web app.');
+          } else if (msg.includes('not found')) {
+            sendText(res, 200, `Error: Task ${taskId} not found.`);
+          } else {
+            console.error('SMS Decision Error:', decisionErr);
+            sendText(res, 200, `Error: Failed to process task ${taskId}.`);
+          }
         }
         return;
       }
