@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import { ensureCleanTables, applyDecisionFix } from './cleanTables.js';
-import { maskTaskPii } from '../lib/masking.js';
+import { maskTaskPii } from '../lib/pii.js';
 
 export interface ListTasksOptions {
   status?: string;
