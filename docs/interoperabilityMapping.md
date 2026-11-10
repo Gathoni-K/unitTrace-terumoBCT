@@ -8,7 +8,7 @@ UnitTrace is designed to integrate with the two standards that dominate African 
 
 ## 1. HL7 FHIR R4 Mapping
 
-Full mapping detail is in [`docs/fhir-mapping.md`](./fhir-mapping.md). Summary below.
+Full mapping detail is in [`docs/fhirMapping.md`](./fhirMapping.md). Summary below.
 
 | UnitTrace Table | FHIR Resource | Key Identifier |
 |-----------------|--------------|----------------|
