@@ -1,4 +1,4 @@
-# UnitTrace (Team CODEINE): Data Quality & Stewardship Workbench for National Blood Transfusion Networks
+# UnitTrace: Data Quality & Stewardship Workbench for National Blood Transfusion Networks
 
 Terumo BCT Africa Hackathon 2026 · Challenge area: Data Quality (Blood Safety & Cold Chain)
 
