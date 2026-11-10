@@ -47,10 +47,11 @@ export interface AuditEntry {
 export interface Finding {
   type: TaskType;
   recordIds: string[];
-  suggestion: string;
+  suggestion: string | Record<string, unknown>;
   reason: string;
   confidence: Confidence;
   source: 'rule' | 'smart';
+  dedupeKey?: string;
 }
 
 export const countryConfigSchema = z.object({

@@ -13,8 +13,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > packages/shared/src/db.types.ts",
-    "ingest": "tsx scripts/ingest.ts",
-    "detect": "tsx scripts/detect.ts"
+    "ingest": "tsx --env-file=.env scripts/ingest.ts",
+    "detect": "tsx --env-file=.env scripts/detect.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
