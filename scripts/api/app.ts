@@ -138,16 +138,36 @@ export function createApiHandler(pool: Pool) {
           return;
         }
 
+        const roleHeader = req.headers['x-user-role'];
+        const userRole: 'clerk' | 'supervisor' =
+          typeof roleHeader === 'string' && roleHeader.toLowerCase() === 'supervisor' ? 'supervisor' : 'clerk';
+
+        const rawIp =
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+          req.socket.remoteAddress ||
+          '127.0.0.1';
+
         const payload: DecisionPayload = {
           action,
           modified_suggestion: body.modified_suggestion as Record<string, unknown> | undefined,
           user_id: (body.user_id as string) ?? undefined,
+          user_role: (body.user_role as DecisionPayload['user_role']) ?? userRole,
+          ip_address: (body.ip_address as string) ?? rawIp,
           channel: (body.channel as DecisionPayload['channel']) ?? 'web',
           note: (body.note as string) ?? undefined,
         };
 
-        const result = await submitDecision(pool, taskId, payload);
-        sendJson(res, 200, result);
+        try {
+          const result = await submitDecision(pool, taskId, payload);
+          sendJson(res, 200, result);
+        } catch (decisionErr) {
+          const status = (decisionErr as { statusCode?: number }).statusCode;
+          if (status === 403) {
+            sendJson(res, 403, { error: (decisionErr as Error).message });
+            return;
+          }
+          throw decisionErr;
+        }
         return;
       }
 

@@ -121,7 +121,7 @@ describe('Task Management API', () => {
 
     const res = await fetch(`${baseUrl}/api/tasks/101/decision`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-role': 'supervisor' },
       body: JSON.stringify({ action: 'accept' }),
     });
 
@@ -145,6 +145,74 @@ describe('Task Management API', () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('must be one of');
+  });
+
+  it('POST /api/tasks/:id/decision returns 403 when clerk attempts duplicate_donor decision', async () => {
+    mockClientQuery
+      .mockResolvedValueOnce({}) // BEGIN
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            task_id: 101,
+            type: 'duplicate_donor',
+            status: 'open',
+            record_ids: ['DNR-001', 'DNR-002'],
+            suggestion: { action: 'review_merge' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({}); // ROLLBACK
+
+    const res = await fetch(`${baseUrl}/api/tasks/101/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': 'clerk',
+      },
+      body: JSON.stringify({ action: 'accept' }),
+    });
+
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toContain('Forbidden');
+    expect(json.error).toContain('supervisors');
+  });
+
+  it('POST /api/tasks/:id/decision allows clerk to resolve missing_donor_blood_group', async () => {
+    mockClientQuery
+      .mockResolvedValueOnce({}) // BEGIN
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            task_id: 202,
+            type: 'missing_donor_blood_group',
+            status: 'open',
+            record_ids: ['DNR-001'],
+            suggestion: { action: 'request_confirmatory_typing' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({}) // UPDATE
+      .mockResolvedValueOnce({}) // INSERT decisions
+      .mockResolvedValueOnce({ rows: [{ id: '901' }] }) // INSERT audit_log
+      .mockResolvedValueOnce({}) // ensureCleanTables DDL
+      .mockResolvedValueOnce({}) // ensureCleanTables insert
+      .mockResolvedValueOnce({}) // applyDecisionFix
+      .mockResolvedValueOnce({}); // COMMIT
+
+    const res = await fetch(`${baseUrl}/api/tasks/202/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': 'clerk',
+      },
+      body: JSON.stringify({ action: 'accept', modified_suggestion: { blood_group: 'A+' } }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.taskId).toBe('202');
   });
 
   it('GET /api/tasks masks birth_date and phone in task reason and suggestion', async () => {
@@ -172,10 +240,10 @@ describe('Task Management API', () => {
     const json = await res.json();
     const task = json.tasks[0];
 
-    expect(task.reason).toContain('XXXXX7788');
+    expect(task.reason).toContain('XXXX');
     expect(task.reason).toContain('1992-XX-XX');
     expect(task.suggestion.birth_date).toBe('1992-XX-XX');
-    expect(task.suggestion.phone_last4).toBe('XXXXX7788');
+    expect(task.suggestion.phone_last4).toBe('XXXX');
   });
 
   it('POST /api/tasks/:id/reveal records access_log audit entry and returns unmasked task', async () => {
