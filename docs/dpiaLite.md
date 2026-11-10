@@ -20,7 +20,7 @@
 | Processing of special-category health data | Kenya Data Protection Act 2019, **s.46** — processing is necessary for health purposes (blood transfusion safety, a public health benefit) |
 | Purpose limitation | Data is used solely to detect and correct data quality defects; no profiling, marketing, or secondary use |
 
-Documented in [`docs/data-map.md`](./data-map.md).
+Documented in [`docs/dataMap.md`](./dataMap.md).
 
 ---
 
@@ -102,5 +102,5 @@ Before production deployment, the operating organisation must:
 3. Appoint a Data Protection Officer (DPO) if processing at scale.
 4. Establish a subject-access-request (SAR) procedure for donors wishing to access or correct their records.
 
-This is documented as a pre-production requirement in [`docs/data-map.md`](./data-map.md).
+This is documented as a pre-production requirement in [`docs/dataMap.md`](./dataMap.md).
 

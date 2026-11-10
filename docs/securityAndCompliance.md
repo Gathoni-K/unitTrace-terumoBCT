@@ -106,5 +106,5 @@ Even if a shared login is used, the IP address and channel pinpoint the physical
 | Data in transit | TLS 1.3 (Supabase default) |
 | Data at rest | AES-256 (Supabase default) |
 
-Documented in [`docs/data-map.md`](./data-map.md).
+Documented in [`docs/dataMap.md`](./dataMap.md).
 
