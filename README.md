@@ -12,6 +12,11 @@ It will surface review tasks for duplicate donors, facility names, sensor glitch
 
 ```sh
 npm install
+npm run db:start
+npm run db:reset
+npm run db:types
+npm run ingest
+npm run detect
 npm run dev
 ```
 
@@ -52,4 +57,8 @@ Detectors, persistence, authentication, synchronization, and production screens 
 
 ## Backend handoff
 
-The backend developer must wire the `DataClient` implementation, real auth, data loading, detectors, and the SMS webhook. No database or network API is configured here.
+The backend developer must wire the `DataClient` implementation, real auth, data loading, detectors, and the SMS webhook. Supabase is scaffolded but not started by the build.
+
+## Backend configuration
+
+Configure Supabase keys, create Auth users, and add their clerk/supervisor profiles using [supabase/seed.sql](supabase/seed.sql). `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are the only browser-safe values. `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are script-only.

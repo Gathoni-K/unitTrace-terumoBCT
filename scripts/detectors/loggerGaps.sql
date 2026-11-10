@@ -1,0 +1,1 @@
+-- TODO: compare expected logger intervals with temperature_logs by facility.

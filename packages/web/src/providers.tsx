@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Role, DataClient } from '@workbench/shared';
 import type { Language, Theme } from './types';
 import { MockDataClient } from './mockDataClient';
+import { SupabaseDataClient } from './data/supabaseDataClient';
 
 export const AuthContext = createContext<{ role: Role | null; setRole: (role: Role) => void }>({ role: null, setRole: () => undefined });
 export function useAuth() { return useContext(AuthContext); }
@@ -38,7 +39,11 @@ async function healthCheck(): Promise<'smart' | 'rules_only'> {
 export const DataClientContext = createContext<DataClient>(new MockDataClient());
 export function useDataClient() { return useContext(DataClientContext); }
 export function DataClientProvider({ children }: { children: ReactNode }) {
-  const client = useMemo(() => new MockDataClient(), []);
+  const client = useMemo<DataClient>(() => {
+    const source = import.meta.env.VITE_DATA_SOURCE as string | undefined;
+    // Mock remains the safe default so the scaffold runs without backend configuration.
+    return source === 'supabase' ? new SupabaseDataClient() : new MockDataClient();
+  }, []);
   return <DataClientContext.Provider value={client}>{children}</DataClientContext.Provider>;
 }
 

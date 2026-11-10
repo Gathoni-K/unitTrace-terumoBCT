@@ -1,0 +1,6 @@
+-- TODO: create Auth users first, then insert their profiles.
+-- Do not put real emails or passwords in this repository.
+--
+-- insert into public.profiles (user_id, role, display_name) values
+--   ('<clerk-auth-user-uuid>', 'clerk', '<display-name>'),
+--   ('<supervisor-auth-user-uuid>', 'supervisor', '<display-name>');

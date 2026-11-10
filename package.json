@@ -8,10 +8,23 @@
     "build": "npm run build --workspaces",
     "lint": "eslint . --ignore-pattern '**/*.ts' --ignore-pattern '**/*.tsx'",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/shared/src/db.types.ts",
+    "ingest": "tsx scripts/ingest.ts",
+    "detect": "tsx scripts/detect.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "pg": "^8.13.1",
+    "pg-copy-streams": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/pg-copy-streams": "^1.2.5",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
     "tsx": "^4.19.2",

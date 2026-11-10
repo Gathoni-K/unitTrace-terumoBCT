@@ -1,5 +1,8 @@
 node_modules
 dist
 .env*
+!.env.example
 data/raw/*
 !.gitkeep
+supabase/.branches
+supabase/.temp
