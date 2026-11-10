@@ -1,56 +1,50 @@
 import type { Pool } from 'pg';
 import type { CountryConfig, Finding } from '@workbench/shared';
 
-export interface DuplicateDonorRow {
-  birth_date: string;
-  sex: string;
-  home_county: string;
+// Naive baseline: group donors by phone_last4 only and emit a finding for every
+// pair. This maximises recall (100%) at the cost of very low precision because
+// many unrelated donors share the last 4 digits of a phone number.
+// This is the baseline against which the fuzzy matcher is compared.
+
+interface DonorPhoneRow {
   phone_last4: string;
-  group_count: string | number;
   donor_ids: string[];
 }
 
 export async function run(pool: Pool, config: CountryConfig): Promise<Finding[]> {
   void config;
 
-  const query = `
+  const result = await pool.query<DonorPhoneRow>(`
     select
-      birth_date::text as birth_date,
-      sex,
-      home_county,
       phone_last4,
-      count(*) as group_count,
       array_agg(donor_id order by registration_date asc, donor_id asc) as donor_ids
     from public.donors
-    where birth_date is not null
-      and sex is not null
-      and home_county is not null
-      and phone_last4 is not null
-    group by birth_date, sex, home_county, phone_last4
+    where phone_last4 is not null
+    group by phone_last4
     having count(*) > 1
-    order by min(registration_date) asc, min(donor_id) asc;
-  `;
+    order by phone_last4;
+  `);
 
-  const result = await pool.query<DuplicateDonorRow>(query);
+  const findings: Finding[] = [];
 
-  return result.rows.map((row): Finding => {
-    const donorIds = row.donor_ids;
-    const primaryDonorId = donorIds[0];
-    const duplicateDonorIds = donorIds.slice(1);
-    const sortedIds = [...donorIds].sort();
+  for (const row of result.rows) {
+    const ids = row.donor_ids;
+    // Emit one finding per unique pair within the group
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const sortedIds = [ids[i], ids[j]].sort();
+        findings.push({
+          type: 'duplicate_donor',
+          recordIds: sortedIds,
+          suggestion: { action: 'review_merge', matched_fields: ['phone_last4'] },
+          reason: `Donors ${sortedIds[0]} and ${sortedIds[1]} share the same phone last 4 digits (${row.phone_last4}).`,
+          confidence: 'rule',
+          source: 'rule',
+          dedupeKey: `duplicate_donor:${sortedIds[0]}:${sortedIds[1]}`,
+        });
+      }
+    }
+  }
 
-    return {
-      type: 'duplicate_donor',
-      recordIds: donorIds,
-      suggestion: {
-        action: 'merge_donors',
-        primaryDonorId,
-        duplicateDonorIds,
-      },
-      reason: `Found ${donorIds.length} donor records sharing birth date (${row.birth_date}), sex (${row.sex}), home county (${row.home_county}), and phone ending in ${row.phone_last4}.`,
-      confidence: 'rule',
-      source: 'rule',
-      dedupeKey: `duplicate_donor:${sortedIds.join(':')}`,
-    };
-  });
+  return findings;
 }

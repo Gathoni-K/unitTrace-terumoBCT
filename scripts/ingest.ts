@@ -136,7 +136,11 @@ async function ingestTable(client: PoolClient, tableName: string): Promise<void>
 
     await client.query(insertQuery);
   } finally {
-    await client.query(`drop table if exists ${stagingTable};`);
+    try {
+      await client.query(`drop table if exists ${stagingTable};`);
+    } catch {
+      // Transaction is already aborted; cleanup is handled upon rollback
+    }
   }
 }
 
