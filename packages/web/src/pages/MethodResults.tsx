@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/pages/MethodResults.tsx
-   ========================================================================== */
 import { useState } from 'react';
 import './MethodResults.css';
 
@@ -35,6 +32,7 @@ export function MethodResults() {
           </p>
         </div>
         <button
+        type="button"
           className={`toggle-switch ${isSmartMode ? 'active' : ''}`}
           onClick={() => setIsSmartMode(!isSmartMode)}
           aria-label="Toggle smart matching"

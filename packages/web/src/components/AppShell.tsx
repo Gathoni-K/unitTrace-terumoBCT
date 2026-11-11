@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/components/AppShell.tsx
-   ========================================================================== */
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../providers';
@@ -138,22 +135,28 @@ export function AppShell() {
           <div className="topbar-right">
             <div className="lang-toggle">
               <button
+              type="button"
                 className={`lang-btn ${language === 'en' ? 'active' : ''}`}
                 onClick={() => setLanguage('en')}
               >
                 EN
               </button>
               <button
+              type="button"
                 className={`lang-btn ${language === 'sw' ? 'active' : ''}`}
                 onClick={() => setLanguage('sw')}
               >
                 SW
               </button>
             </div>
-            <button className="icon-btn" aria-label="Toggle theme">
+            <button
+            type="button"
+            className="icon-btn" aria-label="Toggle theme">
               <span className="material-symbols-outlined">light_mode</span>
             </button>
-            <button className="icon-btn" aria-label="Notifications">
+            <button 
+            type="button"
+            className="icon-btn" aria-label="Notifications">
               <span className="material-symbols-outlined">notifications</span>
               <span className="notification-dot"></span>
             </button>

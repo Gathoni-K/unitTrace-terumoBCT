@@ -437,10 +437,11 @@ export function TaskDetail() {
           )}
 
           <div className="form-group mb-4">
-            <label className="font-label-sm text-secondary block mb-1">
+            <label htmlFor="decision-audit-note" className="font-label-sm text-secondary block mb-1">
               Audit Note (Required for Reject, recommended for Accept/Change)
             </label>
             <textarea
+              id="decision-audit-note"
               className="note-input"
               placeholder="Provide clinical rationale for the immutable audit log…"
               value={note}
@@ -466,6 +467,7 @@ export function TaskDetail() {
               Accept & Fix
             </button>
             <button
+            type="button"
               className="btn-change"
               onClick={() => handleDecision('change')}
               disabled={actionLoading}
@@ -474,6 +476,7 @@ export function TaskDetail() {
               Change Suggestion
             </button>
             <button
+            type="button"
               className="btn-reject"
               onClick={() => handleDecision('reject')}
               disabled={actionLoading || !note.trim()}
