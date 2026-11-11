@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/pages/TaskDetail.tsx
-   ========================================================================== */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -27,6 +24,8 @@ export function TaskDetail() {
     currentRole === 'supervisor'
       ? 'Dr. Mwangi (Supervisor)'
       : 'Sarah Achieng (Data Clerk)';
+  const userId =
+    currentRole === 'supervisor' ? 'supervisor-mwangi' : 'clerk-sarah';
 
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +140,9 @@ export function TaskDetail() {
 
   return (
     <div className="task-detail-container">
-      <button className="btn-back" onClick={() => navigate('/queue')}>
+      <button 
+      type="button"
+      className="btn-back" onClick={() => navigate('/queue')}>
         <span className="material-symbols-outlined">arrow_back</span>
         Back to queue
       </button>
@@ -253,10 +254,10 @@ export function TaskDetail() {
               <div className="field-row">
                 <span className="field-label">Observed Value</span>
                 <span className="field-value text-error font-bold">
-                  {String(observedValue)}
+                  {String(suggestion?.observedValue)}
                 </span>
               </div>
-            )}
+            ) : null}
             <div className="field-row">
               <span className="field-label">Detected by</span>
               <span className="field-value">
@@ -361,7 +362,7 @@ export function TaskDetail() {
             </p>
           </div>
         </div>
-      ) : (
+      ) : currentRole === 'supervisor' ? (
         <div className="action-area">
           <h3 className="font-label-lg text-on-surface mb-2">
             What would you like to do?
@@ -388,6 +389,7 @@ export function TaskDetail() {
 
           <div className="action-buttons">
             <button
+            type="button"
               className="btn-accept"
               onClick={() => handleDecision('accept')}
               disabled={actionLoading}
@@ -419,7 +421,7 @@ export function TaskDetail() {
             change.
           </p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

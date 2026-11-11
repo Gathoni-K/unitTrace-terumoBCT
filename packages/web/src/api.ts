@@ -7,6 +7,10 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://unittrace-terumobct.onrender.com';
 
+function getHeaders(): Record<string, string> {
+  return { 'Content-Type': 'application/json' };
+}
+
 export interface TaskRecord {
   id: string;
   type: string;
@@ -119,6 +123,17 @@ export async function getAuditLogs(limit = 20): Promise<AuditLogItem[]> {
   });
   if (!res.ok) throw new Error(`Failed to fetch audit logs: ${res.status}`);
   return res.json();
+}
+
+export async function getAuditEntries(limit = 50): Promise<{ entries: AuditLogItem[] }> {
+  const res = await fetch(`${API_BASE}/api/audit?limit=${limit}`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch audit entries: ${res.status}`);
+  const data: unknown = await res.json();
+  // Backend may return an array or { entries: [] }
+  if (Array.isArray(data)) return { entries: data as AuditLogItem[] };
+  return data as { entries: AuditLogItem[] };
 }
 
 /* ==========================================================================
