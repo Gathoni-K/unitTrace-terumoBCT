@@ -15,7 +15,10 @@ Hospital blood bank officers, regional blood transfusion service data stewards (
 They perform manual, end-of-shift reconciliations across disconnected paper registers, blood fridge temperature loggers, phlebotomy rosters, and emergency hospital requisition order books.
 
 **Where does it go wrong?**  
+Blood moves through a highly controlled lifecycle: donor screening → collection → testing → quarantine → storage → hospital compatibility. Each stage must preserve a rigorous link between the donor, unit, and patient. However, healthcare institutions rely on fragmented systems (like Terumo Vista or TOMEs for device capture, standalone hospital EMRs, and legacy Excel). UnitTrace does not replace these; it is a vendor-neutral cross-system layer that audits the data between them.
+
 In the 1-year operational dataset (45,699 donation attempts, 34,242 requested units), data fragmentation creates critical clinical and operational failures:
+
 - **Duplicate Donors (Premature Donations)**: **452 duplicate donors (~1% of donors)** are registered under conflicting IDs with slight typos. When donors give blood before the mandatory safety interval (3 months for men, 4 for women), the system fails to detect it, risking donor anaemia.
 - **Missing Vital Clinical Data**: **506 donor records (1.2%)** lack blood groups entirely, and **442 emergency requests (5%)** record patient blood group as `unknown`, causing lethal transfusion delays.
 - **DHIS2 National Reporting Breakdown**: **710 hospital requests (14%)** have facility names typed with differing county abbreviations and casing (`Kiambu CRH` vs `Kiambu County Referral Hospital`), silently dropping them from national dashboards like DHIS2 / KHIS.
@@ -80,7 +83,7 @@ npm run server
 
 ### 3. Verify AI Benchmark, Standards, and Multi-Country Support
 ```bash
-# 1. Reproduce AI vs Baseline benchmark (0.48% vs 99.56% precision)
+# 1. Reproduce AI vs Baseline benchmark (8.10% vs 99.56% precision)
 npm run measure:baseline
 
 # 2. Run test suite (83 tests across 22 test files)
@@ -143,6 +146,8 @@ flowchart LR
 - **HL7 FHIR R4**: Maps clean donors to `Patient`, units to `BiologicallyDerivedProduct`, transfers to `SupplyDelivery`, and requests to `ServiceRequest` ([`docs/fhirMapping.md`](docs/fhirMapping.md)).
 - **ISBT 128**: Regex validation (`^(U\d{4}-[A-Z0-9]{3,4}-\d{6}-(RBC|WB|PLT|FFP|CRYO)|W\d{4}\s\d{2}\s\d{6})$`) of unique donation identifiers.
 - **DHIS2 / KHIS**: Automated normalisation of facility name discrepancies into canonical national master facility list records.
+- **Data-Quality Frameworks:** Aligned with the WHO Data Quality Review (DQR) toolkit and the Kahn Harmonized DQA Framework, targeting Conformance (ISBT 128), Completeness (missing blood groups), and Plausibility (cold chain glitches).
+- **Non-Destructive Architecture:** Zero destructive edits to source tables. Source records remain immutable in staging, while approved fixes are written to isolated clean tables and tracked via an append-only audit log (aligning with SCD Type 2 principles).
 
 Detailed architecture specifications are documented in [`docs/architecture.md`](docs/architecture.md).
 
@@ -158,23 +163,24 @@ Detailed architecture specifications are documented in [`docs/architecture.md`](
   Pairs with composite score $\ge 0.85$ are flagged with clear match breakdowns.
 
 - **Baseline we compared against**:  
-  Naive deterministic baseline matching strictly on exact `phone_last4` equality (`scripts/detectors/duplicateDonors.ts`).
+  We compared the AI matcher against a sensible human heuristic (exact match on sex + county + phone_last4) (`scripts/detectors/duplicateDonors.ts`).
 
 - **Result on 1-year Kenya dataset (43,363 donors, 452 planted ground-truth pairs)**:
 
-| Metric | Naive Baseline (`phone_last4` only) | UnitTrace AI Fuzzy Matcher | Practical Impact |
+| Metric | Sensible Human Baseline (`sex` + `county` + `phone_last4`) | UnitTrace AI Fuzzy Matcher | Practical Impact |
 |---|---|---|---|
-| **Detected Pairs** | 94,439 | **454** | Reduces review backlog by **99.5%** |
+| **Detected Pairs** | 5,581 | **454** | Reduces review backlog by **91.9%** |
 | **True Positives (TP)** | 452 | **452** | 100% recall of actual duplicate donors |
-| **False Positives (FP)** | 93,987 | **2** | Eliminates 93,985 erroneous merge suggestions |
-| **Precision** | **0.48%** | **99.56%** | **+99.08 percentage points precision gain** |
+| **False Positives (FP)** | 5,129 | **2** | Eliminates 5,127 erroneous merge suggestions |
+| **Precision** | **8.10%** | **99.56%** | **+91.46 percentage points precision gain** |
 | **Recall** | **100.0%** | **100.0%** | Comprehensive coverage |
-| **F1 Score** | **0.0095** | **0.9978** | Viable for operational deployment |
+| **F1 Score** | **0.1498** | **0.9978** | Operationally viable for clinical deployment |
 
 - **How a user sees the reason for a recommendation**:  
   Each task presents an explainable summary (e.g., *"Donors D-0012 and D-0459 share identical birth dates, last 4 phone digits (4821), and similar county ('Kiambu' vs 'Kaimbu'). Confidence: 94%"*).
 - **Who approves it**:  
   Frontline clerks can resolve missing blood groups and cold-chain flags. High-consequence duplicate donor merges **strictly require a supervisor** (`x-user-role: supervisor`). Clerks are blocked with HTTP 403.
+- **Confidence-Tiered HITL:** In alignment with rigorous health-informatics standards, our human-in-the-loop workflow enforces a strict boundary: AI only suggests. High-consequence merges require dual-verification (Supervisor sign-off), while low-confidence matches are suppressed to prevent alert fatigue.
 - **What happens if the AI is wrong or offline**:  
   - If wrong: Reviewers can Reject or Change recommendations; the system never auto-merges.
   - If offline: The engine supports an instant rule-based fallback via `--no-ai` CLI flag or `"enable_fuzzy_matching": false` in country config. It prints:  
@@ -208,6 +214,8 @@ Detailed methodology is documented in [`docs/aiMethodology.md`](docs/aiMethodolo
 - **Setting Up for Another Site or Country**:  
   Policies are decoupled into country JSON files. Swapping from Kenya to Uganda takes a single flag (`--config=config/country.uganda.json`), adjusting inter-donation intervals (90 vs 120 days), phone format regexes, and local language strings without modifying code.
 
+Furthermore, our data model respects Kenyan statutory requirements: no records are ever deleted (supporting the 7-year retention rule), and our facility name normalization directly protects the integrity of national DHIS2/KHIS reporting, mitigating the fragmentation that Kenyan health-data experts warn breaks national dashboards.
+
 ---
 
 ## AI tools we used
@@ -220,8 +228,12 @@ Detailed methodology is documented in [`docs/aiMethodology.md`](docs/aiMethodolo
 
 | Name | Role | Country | Presenting Friday (in person / online) |
 |------|------|---------|-----------------------------------------|
-| Natasha Wambui Hinga | Full Stack Engineer | Kenya | In person |
 | Gathoni Karume | Data Engineer & Backend Engineer | Kenya | In person |
+| Natasha Hinga | Lead Frontend Engineer | Kenya | In person |
+| Charity Silah | Product Manager, Lead Researcher | Kenya | In person |
+| Tabitha Chiuri | Quality Assurance and Testing Lead | Kenya | In person | 
+| Elizabeth Waceke | Assistant Researcher | Kenya | Virtual |
+
 
 ---
 

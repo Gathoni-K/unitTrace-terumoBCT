@@ -10,7 +10,7 @@ import type { Role, DataClient } from '@workbench/shared';
 import type { Language, Theme } from './types';
 import { MockDataClient } from './mockDataClient';
 import { SupabaseDataClient } from './data/supabaseDataClient';
-import { syncQueue } from './api';
+import { syncQueue, API_BASE } from './api';
 
 export const AuthContext = createContext<{
   role: Role | null;
@@ -84,8 +84,15 @@ export function EngineStatusProvider({ children }: { children: ReactNode }) {
   );
 }
 async function healthCheck(): Promise<'smart' | 'rules_only'> {
-  // TODO: replace with a backend health check; no network call is made in the scaffold.
-  return 'rules_only';
+  try {
+    const res = await fetch(`${API_BASE}/api/health`);
+    if (res.ok) {
+      return 'smart';
+    }
+    return 'rules_only';
+  } catch {
+    return 'rules_only';
+  }
 }
 
 export const DataClientContext = createContext<DataClient>(

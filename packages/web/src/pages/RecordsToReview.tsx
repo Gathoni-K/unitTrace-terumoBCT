@@ -1,12 +1,11 @@
-/* ==========================================================================
-   packages/web/src/pages/RecordsToReview.tsx
-   ========================================================================== */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   listTasks,
   TASK_TYPE_LABELS,
   TASK_TYPE_ICONS,
+  formatFriendlyReason,
+  formatRecordId,
   type TaskRecord,
 } from '../api';
 import './RecordsToReview.css';
@@ -84,6 +83,7 @@ export function RecordsToReview({
             <span className="text-sm text-secondary">Live data</span>
           </div>
           <button
+          type="button"
             className="btn-audit-log"
             onClick={() => setIsAuditOpen(!isAuditOpen)}
           >
@@ -96,6 +96,7 @@ export function RecordsToReview({
       <div className="queue-tabs">
         {STATUS_TABS.map((tab) => (
           <button
+          type="button"
             key={tab.key}
             className={`queue-tab ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}
@@ -185,7 +186,7 @@ export function RecordsToReview({
                         <span>{TASK_TYPE_LABELS[task.type] ?? task.type}</span>
                       </div>
                     </td>
-                    <td className="reason-cell">{task.reason}</td>
+                    <td className="reason-cell">{formatFriendlyReason(task.reason, task.type)}</td>
                     <td>
                       <span
                         className={`confidence-badge confidence-${task.confidence}`}
@@ -233,10 +234,10 @@ export function RecordsToReview({
                   </span>
                   <strong>{TASK_TYPE_LABELS[task.type] ?? task.type}</strong>
                 </div>
-                <p className="queue-card-reason">{task.reason}</p>
+                <p className="queue-card-reason">{formatFriendlyReason(task.reason, task.type)}</p>
                 <div className="queue-card-footer">
                   <span className="text-xs text-secondary">
-                    {task.recordIds.join(' · ')}
+                    {task.recordIds.map(formatRecordId).join(' · ')}
                   </span>
                   <span className="text-primary font-semibold text-sm">
                     Open →

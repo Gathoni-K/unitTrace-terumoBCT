@@ -143,6 +143,11 @@ export async function getTask(
   id: number | string,
   mask = true,
 ): Promise<TaskRecord | null> {
+  const strId = String(id).trim();
+  if (!/^\d+$/.test(strId)) {
+    return null;
+  }
+
   const res = await pool.query<{
     task_id: string | number;
     type: string;
@@ -238,6 +243,13 @@ export async function submitDecision(
   taskId: number | string,
   payload: DecisionPayload,
 ): Promise<{ success: boolean; taskId: string; action: string; status: string; auditId?: string }> {
+  const strTaskId = String(taskId).trim();
+  if (!/^\d+$/.test(strTaskId)) {
+    const notFoundError = new Error(`Task ${taskId} not found.`);
+    (notFoundError as { statusCode?: number }).statusCode = 404;
+    throw notFoundError;
+  }
+
   const client = await pool.connect();
   try {
     await client.query('begin;');
@@ -250,18 +262,28 @@ export async function submitDecision(
       record_ids: unknown;
       suggestion: unknown;
     }>('select task_id, type, status, record_ids, suggestion from public.tasks where task_id = $1 for update', [
-      taskId,
+      strTaskId,
     ]);
 
     if (taskRes.rows.length === 0) {
-      throw new Error(`Task ${taskId} not found.`);
+      const notFoundError = new Error(`Task ${taskId} not found.`);
+      (notFoundError as { statusCode?: number }).statusCode = 404;
+      throw notFoundError;
     }
 
     const task = taskRes.rows[0];
     const previousStatus = task.status;
 
+    // Concurrency / Conflict Check: reject decisions on already resolved tasks
+    if (previousStatus === 'done' || previousStatus === 'resolved') {
+      const conflictError = new Error(`Task ${taskId} is already resolved (${previousStatus}).`);
+      (conflictError as { statusCode?: number }).statusCode = 409;
+      throw conflictError;
+    }
+
     // RBAC: duplicate_donor merges strictly require 'supervisor' role
-    if (task.type === 'duplicate_donor' && payload.user_role !== 'supervisor') {
+    const effectiveRole = payload.user_role === 'supervisor' ? 'supervisor' : 'clerk';
+    if (task.type === 'duplicate_donor' && effectiveRole !== 'supervisor') {
       const forbiddenError = new Error('Forbidden: Only supervisors are authorized to decide on duplicate donor merges.');
       (forbiddenError as { statusCode?: number }).statusCode = 403;
       throw forbiddenError;

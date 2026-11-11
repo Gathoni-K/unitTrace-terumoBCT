@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/pages/MethodResults.tsx
-   ========================================================================== */
 import { useState } from 'react';
 import './MethodResults.css';
 
@@ -12,10 +9,10 @@ export function MethodResults() {
       <div className="methods-header">
         <div>
           <h1 className="font-headline-lg text-on-surface">
-            Matching Method Results
+            How Well Does Duplicate Detection Work?
           </h1>
           <p className="font-body-md text-secondary">
-            How well does the duplicate donor detection work?
+            Comparing simple hospital rules against UnitTrace Smart AI matching on 43,363 Kenyan donor records.
           </p>
         </div>
       </div>
@@ -27,14 +24,14 @@ export function MethodResults() {
             <span className="material-symbols-outlined text-primary">
               psychology
             </span>
-            Smart Matching (AI)
+            Smart AI Matching
           </h3>
           <p className="text-sm text-secondary">
-            Uses fuzzy logic (Levenshtein distance, date proximity) to find true
-            duplicates.
+            Uses smart name spelling and birth date checks to find true duplicate donors without drowning staff in false alarms.
           </p>
         </div>
         <button
+          type="button"
           className={`toggle-switch ${isSmartMode ? 'active' : ''}`}
           onClick={() => setIsSmartMode(!isSmartMode)}
           aria-label="Toggle smart matching"
@@ -49,33 +46,33 @@ export function MethodResults() {
         <div className={`result-card ${!isSmartMode ? 'highlight' : ''}`}>
           <div className="result-header">
             <h3 className="font-headline-sm text-on-surface">
-              Rule-Based Baseline
+              Standard Rule (Sex + County + Phone)
             </h3>
-            <span className="result-badge badge-warning">Rules Only</span>
+            <span className="result-badge badge-warning">Basic Rules</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">Pairs detected</span>
-            <span className="metric-value">94,439</span>
+            <span className="metric-label">Total pairs flagged</span>
+            <span className="metric-value">5,581</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">True positives</span>
+            <span className="metric-label">Real duplicates found</span>
             <span className="metric-value">452</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">False positives</span>
-            <span className="metric-value text-error">93,987</span>
+            <span className="metric-label">Wrongly flagged (false alarms)</span>
+            <span className="metric-value text-error">5,129</span>
           </div>
           <div className="metric-row border-top">
             <span className="metric-label font-bold text-on-surface">
-              Precision
+              Accuracy (Precision)
             </span>
-            <span className="metric-value text-error font-bold">0.48%</span>
+            <span className="metric-value text-error font-bold">8.10%</span>
           </div>
           <div className="metric-row">
             <span className="metric-label font-bold text-on-surface">
-              Recall
+              Catch rate (Recall)
             </span>
-            <span className="metric-value">100%</span>
+            <span className="metric-value">100.0%</span>
           </div>
         </div>
 
@@ -85,31 +82,31 @@ export function MethodResults() {
         >
           <div className="result-header">
             <h3 className="font-headline-sm text-on-surface">
-              AI Fuzzy Matcher
+              UnitTrace Smart AI Matcher
             </h3>
-            <span className="result-badge badge-success">Smart</span>
+            <span className="result-badge badge-success">Smart AI</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">Pairs detected</span>
+            <span className="metric-label">Total pairs flagged</span>
             <span className="metric-value">454</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">True positives</span>
+            <span className="metric-label">Real duplicates found</span>
             <span className="metric-value">452</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">False positives</span>
+            <span className="metric-label">Wrongly flagged (false alarms)</span>
             <span className="metric-value text-success">2</span>
           </div>
           <div className="metric-row border-top">
             <span className="metric-label font-bold text-on-surface">
-              Precision
+              Accuracy (Precision)
             </span>
             <span className="metric-value text-success font-bold">99.56%</span>
           </div>
           <div className="metric-row">
             <span className="metric-label font-bold text-on-surface">
-              Recall
+              Catch rate (Recall)
             </span>
             <span className="metric-value">100%</span>
           </div>
@@ -123,15 +120,13 @@ export function MethodResults() {
         </span>
         <div>
           <h3 className="font-label-md text-on-surface">
-            What these numbers mean
+            What these numbers mean for hospital staff
           </h3>
           <p className="text-sm text-on-surface-variant mt-1">
-            The rule-based baseline finds all real duplicates (100% recall), but
-            it flags <strong>93,987 false positives</strong> — meaning clerks
-            would waste hours checking records of people who are not duplicates.
-            The AI Fuzzy Matcher finds the same real duplicates, but reduces
-            false positives to just <strong>2</strong>, making it practically
-            usable for daily review.
+            A simple rule checking gender, county, and phone number catches all real duplicates, but it produces <strong>5,129 false alarms</strong> — forcing busy clerks to spend hours reviewing people who are completely different.
+          </p>
+          <p className="text-sm text-on-surface-variant mt-2">
+            UnitTrace Smart AI catches the exact same 452 real duplicates, but reduces false alarms to just <strong>2</strong> (99.56% accuracy). This cuts review workload by <strong>91.9%</strong>, making daily checks fast, reliable, and practical.
           </p>
         </div>
       </div>
@@ -147,8 +142,7 @@ export function MethodResults() {
               Smart Matching is Offline
             </h3>
             <p className="text-sm text-on-surface-variant">
-              The system has fallen back to rule-based checks only. Confidence
-              scores are not available.
+              The system is currently running on basic safety rules only. Confidence scores and smart duplicate suggestions are paused.
             </p>
           </div>
         </div>

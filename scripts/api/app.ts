@@ -140,9 +140,9 @@ export function createApiHandler(pool: Pool) {
         let userId: string | undefined;
         if (method === 'POST') {
           const body = await readRequestBody(req);
-          userId = (body.user_id as string) ?? undefined;
+          userId = (body.user_id as string) || (req.headers['x-user-id'] as string) || undefined;
         } else {
-          userId = parsedUrl.searchParams.get('user_id') ?? undefined;
+          userId = parsedUrl.searchParams.get('user_id') || (req.headers['x-user-id'] as string) || undefined;
         }
 
         try {
@@ -199,7 +199,7 @@ export function createApiHandler(pool: Pool) {
           action,
           modified_suggestion: body.modified_suggestion as Record<string, unknown> | undefined,
           user_id: (body.user_id as string) ?? undefined,
-          user_role: (body.user_role as DecisionPayload['user_role']) ?? userRole,
+          user_role: userRole,
           ip_address: (body.ip_address as string) ?? rawIp,
           channel: (body.channel as DecisionPayload['channel']) ?? 'web',
           note: (body.note as string) ?? undefined,
@@ -210,8 +210,17 @@ export function createApiHandler(pool: Pool) {
           sendJson(res, 200, result);
         } catch (decisionErr) {
           const status = (decisionErr as { statusCode?: number }).statusCode;
-          if (status === 403) {
-            sendJson(res, 403, { error: (decisionErr as Error).message });
+          const msg = (decisionErr as Error).message || String(decisionErr);
+          if (status === 403 || msg.includes('Forbidden')) {
+            sendJson(res, 403, { error: msg });
+            return;
+          }
+          if (status === 409 || msg.includes('already resolved')) {
+            sendJson(res, 409, { error: msg });
+            return;
+          }
+          if (status === 404 || msg.includes('not found')) {
+            sendJson(res, 404, { error: msg });
             return;
           }
           throw decisionErr;
@@ -249,7 +258,9 @@ export function createApiHandler(pool: Pool) {
           const msg = decisionErr instanceof Error ? decisionErr.message : String(decisionErr);
           if (msg.includes('supervisors') || (decisionErr as { statusCode?: number }).statusCode === 403) {
             sendText(res, 200, 'Error: Only supervisors can approve merges. Please use the web app.');
-          } else if (msg.includes('not found')) {
+          } else if (msg.includes('already resolved') || (decisionErr as { statusCode?: number }).statusCode === 409) {
+            sendText(res, 200, `Error: Task ${taskId} is already resolved.`);
+          } else if (msg.includes('not found') || (decisionErr as { statusCode?: number }).statusCode === 404) {
             sendText(res, 200, `Error: Task ${taskId} not found.`);
           } else {
             console.error('SMS Decision Error:', decisionErr);
