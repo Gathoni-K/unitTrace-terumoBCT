@@ -75,7 +75,7 @@ export function TaskDetail() {
     ) {
       showToast(
         'error',
-        'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+        'Error: You must be a Supervisor to do this.',
       );
       return;
     }
@@ -101,7 +101,7 @@ export function TaskDetail() {
       if (e.status === 403) {
         showToast(
           'error',
-          'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+          'Error: You must be a Supervisor to do this.',
         );
       } else {
         showToast('error', e.message || 'Failed to submit decision.');
@@ -132,9 +132,11 @@ export function TaskDetail() {
 
   const isDecisionMade = decisionMade !== null;
   const suggestion = task.suggestion as Record<string, unknown> | undefined;
-  const observedValue = suggestion?.observedValue;
+  const recordedValue = suggestion?.observedValue;
   const showsComparison =
-    task.type === 'duplicate_donor' || task.type === 'facility_name';
+    task.type === 'duplicate_donor' ||
+    task.type === 'inconsistent_facility_name' ||
+    task.type === 'facility_name';
 
   return (
     <div className="task-detail-container">
@@ -199,11 +201,11 @@ export function TaskDetail() {
                 <span>PII Revealed — action logged to audit trail</span>
               </div>
             )}
-            {observedValue !== undefined && (
+            {recordedValue !== undefined && (
               <div className="field-row">
                 <span className="field-label">Recorded Value</span>
                 <span className="field-value text-error font-bold">
-                  {String(observedValue)}
+                  {String(recordedValue)}
                 </span>
               </div>
             )}
