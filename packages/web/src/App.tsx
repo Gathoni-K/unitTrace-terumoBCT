@@ -24,6 +24,7 @@ import type { Language } from './types';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { Dashboard } from './pages/Dashboard';
+import { RecordsToReview } from './pages/RecordsToReview';
 import './styles.css';
 
 const routes = [
@@ -83,7 +84,7 @@ export function App() {
         <Route element={<RequireRole />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/queue" element={<Page title="queue" />} />
+            <Route path="/queue" element={<RecordsToReview />} />
             <Route path="/tasks/:id" element={<TaskPage />} />
             <Route path="/audit" element={<Page title="audit" />} />
             <Route path="/methods" element={<Page title="methods" />} />
