@@ -1,8 +1,5 @@
-/* ==========================================================================
-   packages/web/src/pages/Dashboard.tsx
-   ========================================================================== */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   getMetrics,
   getAuditLogs,
@@ -13,6 +10,7 @@ import { useAuth } from '../providers';
 import './Dashboard.css';
 
 export function Dashboard() {
+  const location = useLocation();
   const { role, setRole } = useAuth();
   const userRole = role === 'supervisor' ? 'supervisor' : 'clerk';
   const userName = userRole === 'supervisor' ? 'Dr. Mwangi' : 'Sarah';
@@ -38,7 +36,7 @@ export function Dashboard() {
       .catch((err) => {
         console.warn('Audit logs API fallback:', err);
       });
-  }, []);
+  }, [location.pathname]);
 
   const handleRefreshAudit = async () => {
     setRefreshingAudit(true);
@@ -110,15 +108,10 @@ export function Dashboard() {
             shield
           </span>
           <span className="font-label-sm">
-            <strong>Safeguard Active:</strong> Demonstration Data — Fictional
-            records for demonstration purposes. Raw hospital databases remain
+            <strong>Safeguard Active:</strong> Demonstration Data: Fictional
+            records for demonstration purposes. Raw hospital data remain
             write-protected.
           </span>
-        </div>
-        <div className="flex gap-4 text-xs opacity-80">
-          <span>Batch #KE-2025-084</span>
-          <span>•</span>
-          <span>NBO Zone Node 04</span>
         </div>
       </div>
 
@@ -342,51 +335,51 @@ export function Dashboard() {
               icon="people"
               badge={`${duplicateDonors.toLocaleString()} records`}
               badgeClass="bg-error-container text-on-error-container"
-              title="Possible duplicate donors"
-              desc="Two records belong to the same person with minor typos or alternate ID numbers (AI Fuzzy Matcher)."
+              title="Same person, different record"
+              desc="Our AI thinks these two records might belong to the same person. A human needs to check."
             />
             <ProblemCard
               icon="domain_disabled"
               badge={`${facilityNamesMismatch.toLocaleString()} records`}
-              title="Facility names that do not match"
-              desc='Non-standard hospital names like "Kiambu CRH" vs Master Health Facility List (DHIS2 breaking).'
+              title="Hospital name spelled wrong"
+              desc="The hospital name doesn't match the national registry. This breaks national reports."
             />
             <ProblemCard
               icon="bloodtype"
               badge={`${missingDonorBloodGroup.toLocaleString()} records`}
-              title="Missing blood group info"
-              desc="Donor logged without confirmed ABO/Rh typing entered prior to bag barcode issuance."
+              title="Donor has no blood type"
+              desc="This donor's blood type is missing. We cannot safely match them to a patient."
             />
             <ProblemCard
               icon="emergency"
               badge={`${unknownPatientBloodGroup.toLocaleString()} urgent`}
               badgeClass="bg-error-container text-on-error-container"
-              title="Unknown patient blood group"
-              desc="Emergency requisition received with recipient blood group omitted in hospital ward order."
+              title="Patient has no blood type"
+              desc="A patient needs blood, but the hospital didn't write down their blood type."
             />
             <ProblemCard
               icon="device_thermostat"
               badge={`${sensorGlitches.toLocaleString()} sensors`}
-              title="Unusual temperature readings"
-              desc="Sensor data anomaly detected: impossible fridge log value recorded (-99°C, 99.9°C)."
+              title="Thermometer is broken"
+              desc="The fridge recorded an impossible temperature. The thermometer is probably broken."
             />
             <ProblemCard
               icon="cloud_off"
               badge={`${loggerGaps.toLocaleString()} gaps`}
-              title="Missing temperature readings"
-              desc="Cold-chain logger dropout blackouts (>6 hours) during fridge power outages."
+              title="Fridge stopped checking temperature"
+              desc="The fridge didn't record its temperature for over 6 hours."
             />
             <ProblemCard
               icon="local_shipping"
               badge={`${unconfirmedTransfers.toLocaleString()} dispatches`}
-              title="Transfers without confirmation"
-              desc="Dispatched blood units missing receiving hospital timestamp acknowledgement."
+              title="Hospital didn't confirm delivery"
+              desc="Blood was sent to another hospital, but they never confirmed they received it."
             />
             <ProblemCard
               icon="timelapse"
               badge={`${donationTooSoon.toLocaleString()} donors`}
-              title="Donations too close together"
-              desc="Donors registered with intervals below safety thresholds (90 days male / 120 days female)."
+              title="Donor gave blood too soon"
+              desc="This person gave blood again before it was safe. (Wait 90 days for men, 120 for women)."
             />
           </div>
         </div>

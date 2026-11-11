@@ -53,16 +53,17 @@ export async function listTasks(
 }
 
 export const TASK_TYPE_LABELS: Record<string, string> = {
-  duplicate_donor: 'Possible duplicate donor',
-  facility_name: 'Hospital name mismatch',
+  duplicate_donor: 'Possible Duplicate Donor',
+  inconsistent_facility_name: 'Facility Name Typo',
+  facility_name: 'Facility Name Typo',
   implausible: 'Impossible reading',
   invalid_isbt128: 'Invalid barcode ID',
-  sensor_glitch: 'Broken fridge sensor',
+  sensor_glitch: 'Broken Fridge Sensor',
   logger_gap: 'Fridge stopped reporting',
-  missing_donor_blood_group: 'Missing donor blood group',
+  missing_donor_blood_group: 'Missing Blood Group',
   unknown_patient_blood_group: 'Missing patient blood group',
-  unconfirmed_transfer: 'Missing delivery receipt',
-  donation_too_soon: 'Donor gave blood too soon',
+  unconfirmed_transfer: 'Missing Delivery Receipt',
+  donation_too_soon: 'Donor Gave Blood Too Soon',
 };
 
 export function formatRecordId(id?: string): string {
@@ -113,7 +114,7 @@ export function formatFriendlyReason(reason?: string, taskType?: string): string
 
   // 5. Unconfirmed transfer
   if (/never confirmed received/i.test(reason) || /missing a receipt confirmation/i.test(reason)) {
-    return "Blood was sent to another hospital, but they haven't confirmed they received it.";
+    return 'Blood was sent to another hospital, but they never confirmed they received it.';
   }
 
   // 6. Sensor glitch
@@ -144,15 +145,16 @@ export function formatFriendlyReason(reason?: string, taskType?: string): string
 
   // Fallback: replace any database column names / snake_case
   return reason
-    .replace(/\bphone_last4\b/g, 'phone ending')
-    .replace(/\bbirth_date\b/g, 'date of birth')
+    .replace(/\bphone_last4\b/g, 'Phone ending')
+    .replace(/\bbirth_date\b/g, 'Date of birth')
     .replace(/\bhome_county\b/g, 'home county')
-    .replace(/\breceived_at\b/g, 'delivery confirmation')
+    .replace(/\breceived_at\b/g, 'Delivery confirmation')
     .replace(/\bdispatched_at\b/g, 'dispatch time');
 }
 
 export const TASK_TYPE_ICONS: Record<string, string> = {
   duplicate_donor: 'people',
+  inconsistent_facility_name: 'domain_disabled',
   facility_name: 'domain_disabled',
   implausible: 'domain_disabled',
   invalid_isbt128: 'badge',
@@ -282,7 +284,7 @@ export async function getTask(id: string): Promise<TaskRecord> {
   return res.json();
 }
 
-export async function revealTaskPii(id: string, userId?: string): Promise<TaskRecord> {
+export async function revealTaskPii(id: string, userId: string): Promise<TaskRecord> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -320,7 +322,7 @@ export async function submitDecision(
 
   if (res.status === 403) {
     const err = new Error(
-      'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+      'Error: You must be a Supervisor to do this.',
     );
     (err as any).status = 403;
     throw err;

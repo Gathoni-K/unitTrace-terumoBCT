@@ -11,9 +11,14 @@ import {
 import './RecordsToReview.css';
 
 const STATUS_TABS = [
-  { key: 'open', label: 'All open' },
-  { key: 'waiting_supervisor', label: 'Waiting for supervisor' }, // Replaces separate Approvals page
-  { key: 'done', label: 'Done' },
+  { key: 'open', label: 'All open', status: 'open' },
+  {
+    key: 'waiting_supervisor',
+    label: 'Waiting for supervisor',
+    status: 'open',
+    type: 'duplicate_donor',
+  },
+  { key: 'done', label: 'Done', status: 'done' },
 ];
 
 export function RecordsToReview({
@@ -32,10 +37,12 @@ export function RecordsToReview({
     let cancelled = false;
     setLoading(true);
     setError(null);
+    const activeTabConfig =
+      STATUS_TABS.find((tab) => tab.key === activeTab) ?? STATUS_TABS[0];
 
     listTasks({
-      status: activeTab,
-      type: typeFilter || undefined,
+      status: activeTabConfig.status,
+      type: activeTabConfig.type ?? (typeFilter || undefined),
       limit: 50,
     })
       .then((res) => {

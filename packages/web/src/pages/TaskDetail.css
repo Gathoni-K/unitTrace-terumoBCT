@@ -145,6 +145,10 @@
   gap: 16px;
 }
 
+.comparison-grid.single-record {
+  grid-template-columns: 1fr;
+}
+
 .record-card {
   background: var(--surface-container-lowest);
   border: 1px solid var(--surface-container);
@@ -206,6 +210,15 @@
   border-radius: var(--border-radius-xl);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--surface-container);
+}
+
+.clerk-notice {
+  padding: 16px 20px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--surface-container);
+  border-radius: var(--border-radius-xl);
+  color: var(--on-surface-variant);
+  text-align: center;
 }
 
 .role-restriction-notice {

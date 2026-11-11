@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getTask,
+  formatFriendlyReason,
   revealTaskPii,
   submitDecisionWithOfflineSync,
   TASK_TYPE_LABELS,
@@ -27,6 +28,7 @@ export function TaskDetail() {
     currentRole === 'supervisor'
       ? 'Dr. Mwangi (Supervisor)'
       : 'Sarah Achieng (Data Clerk)';
+  const userId = currentRole === 'supervisor' ? 'supervisor' : 'clerk';
 
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export function TaskDetail() {
     if (!id) return;
     setRevealingPii(true);
     try {
-      const unmaskedTask = await revealTaskPii(id);
+      const unmaskedTask = await revealTaskPii(id, userId);
       setTask(unmaskedTask);
       setPiiRevealed(true);
       showToast(
@@ -74,7 +76,7 @@ export function TaskDetail() {
     ) {
       showToast(
         'error',
-        'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+        'Error: You must be a Supervisor to do this.',
       );
       return;
     }
@@ -92,7 +94,7 @@ export function TaskDetail() {
       showToast(
         'success',
         res.status === 'queued'
-          ? `Decision queued offline. Will sync when connection returns.`
+          ? '⚠️ Queued locally. Will sync when connection returns.'
           : `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
       );
     } catch (err) {
@@ -100,7 +102,7 @@ export function TaskDetail() {
       if (e.status === 403) {
         showToast(
           'error',
-          'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+          'Error: You must be a Supervisor to do this.',
         );
       } else {
         showToast('error', e.message || 'Failed to submit decision.');
@@ -131,7 +133,19 @@ export function TaskDetail() {
 
   const isDecisionMade = decisionMade !== null;
   const suggestion = task.suggestion as Record<string, unknown> | undefined;
-  const observedValue = suggestion?.observedValue;
+  const recordedValue = suggestion?.observedValue;
+  const showsComparison =
+    task.type === 'duplicate_donor' ||
+    task.type === 'inconsistent_facility_name' ||
+    task.type === 'facility_name';
+  const taskExplanation =
+    task.type === 'duplicate_donor'
+      ? 'Our AI thinks these might be the same person. They share the same gender, phone ending, and birth date.'
+      : task.type === 'sensor_glitch'
+        ? 'The fridge recorded an impossible temperature. The thermometer is probably broken.'
+        : task.type === 'unconfirmed_transfer'
+          ? 'Blood was sent to another hospital, but they never confirmed they received it.'
+          : formatFriendlyReason(task.reason, task.type);
 
   return (
     <div className="task-detail-container">
@@ -144,7 +158,7 @@ export function TaskDetail() {
         <div>
           <span className="mono-tag">#{task.id}</span>
           <h1 className="font-headline-lg text-on-surface mt-2">
-            {TASK_TYPE_LABELS[task.type] ?? task.type}
+            {TASK_TYPE_LABELS[task.type] ?? 'Unknown Issue'}
           </h1>
         </div>
         <div
@@ -165,14 +179,18 @@ export function TaskDetail() {
           <h3 className="font-label-md text-on-surface mb-1">
             Why this was flagged
           </h3>
-          <p className="font-body-md text-on-surface-variant">{task.reason}</p>
+          <p className="font-body-md text-on-surface-variant">
+            {taskExplanation}
+          </p>
         </div>
       </div>
 
-      <div className="comparison-grid">
+      <div className={`comparison-grid${showsComparison ? '' : ' single-record'}`}>
         <div className="record-card">
           <div className="record-header">
-            <h3 className="font-label-md">Record A</h3>
+            <h3 className="font-label-md">
+              {showsComparison ? 'Record A' : 'Record'}
+            </h3>
             <span className="mono-tag">{task.recordIds[0]}</span>
           </div>
           <div className="record-body">
@@ -192,14 +210,30 @@ export function TaskDetail() {
                 <span>PII Revealed — action logged to audit trail</span>
               </div>
             )}
-            {observedValue !== undefined && (
+            {recordedValue !== undefined && (
               <div className="field-row">
-                <span className="field-label">Observed Value</span>
+                <span className="field-label">Recorded Value</span>
                 <span className="field-value text-error font-bold">
-                  {String(observedValue)}
+                  {String(recordedValue)}
                 </span>
               </div>
             )}
+            <div className="field-row">
+              <span className="field-label">Birth date</span>
+              <span className="field-value">
+                {piiRevealed
+                  ? String(suggestion?.birth_date ?? 'Not available')
+                  : '1992-XX-XX'}
+              </span>
+            </div>
+            <div className="field-row">
+              <span className="field-label">Phone ending</span>
+              <span className="field-value">
+                {piiRevealed
+                  ? String(suggestion?.phone_last4 ?? 'Not available')
+                  : 'XXXX'}
+              </span>
+            </div>
             <div className="field-row">
               <span className="field-label">Detected by</span>
               <span className="field-value">
@@ -215,7 +249,7 @@ export function TaskDetail() {
           </div>
         </div>
 
-        {task.recordIds.length > 1 && (
+        {showsComparison && task.recordIds.length > 1 && (
           <div className="record-card">
             <div className="record-header">
               <h3 className="font-label-md">Record B</h3>
@@ -223,8 +257,26 @@ export function TaskDetail() {
             </div>
             <div className="record-body">
               <div className="field-row">
-                <span className="field-label">Reference ID</span>
-                <span className="field-value">{task.recordIds[1]}</span>
+                <span className="field-label">Birth date</span>
+                <span className="field-value">
+                  {piiRevealed
+                    ? String(suggestion?.birth_date ?? 'Not available')
+                    : '1992-XX-XX'}
+                </span>
+              </div>
+              <div className="field-row">
+                <span className="field-label">Phone ending</span>
+                <span className="field-value">
+                  {piiRevealed
+                    ? String(suggestion?.phone_last4 ?? 'Not available')
+                    : 'XXXX'}
+                </span>
+              </div>
+              <div className="field-row">
+                <span className="field-label">Date/Time of Record</span>
+                <span className="field-value">
+                  {new Date(task.createdAt).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -253,59 +305,66 @@ export function TaskDetail() {
             </h3>
             <p className="text-sm text-on-surface-variant mt-1">
               {isQueuedOffline
-                ? 'Queued offline. Will sync when connection returns.'
+                ? '⚠️ Queued locally. Will sync when connection returns.'
                 : 'The change has been logged in the audit trail. If this requires supervisor approval, it will now appear in their queue.'}
             </p>
           </div>
         </div>
       ) : (
-        <div className="action-area">
-          <h3 className="font-label-lg text-on-surface mb-2">
-            What would you like to do?
-          </h3>
-          <div className="form-group mb-4">
-            <label className="font-label-sm text-secondary block mb-1">
-              Optional note (required for Reject)
-            </label>
-            <textarea
-              className="note-input"
-              placeholder="Add context for the audit trail..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-            />
+        currentRole === 'supervisor' ? (
+          <div className="action-area">
+            <h3 className="font-label-lg text-on-surface mb-2">
+              What would you like to do?
+            </h3>
+            <div className="form-group mb-4">
+              <label className="font-label-sm text-secondary block mb-1">
+                Optional note (required for Reject)
+              </label>
+              <textarea
+                className="note-input"
+                placeholder="Add context for the audit trail..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="action-buttons">
+              <button
+                className="btn-accept"
+                onClick={() => handleDecision('accept')}
+                disabled={actionLoading}
+              >
+                <span className="material-symbols-outlined">check</span>
+                Accept
+              </button>
+              <button
+                className="btn-change"
+                onClick={() => handleDecision('change')}
+                disabled={actionLoading}
+              >
+                <span className="material-symbols-outlined">edit</span>
+                Change
+              </button>
+              <button
+                className="btn-reject"
+                onClick={() => handleDecision('reject')}
+                disabled={actionLoading || !note.trim()}
+              >
+                <span className="material-symbols-outlined">close</span>
+                Reject
+              </button>
+            </div>
+            <p className="text-xs text-secondary text-center mt-3">
+              Nothing is auto-corrected. A human decision is required for every
+              change.
+            </p>
           </div>
-          <div className="action-buttons">
-            <button
-              className="btn-accept"
-              onClick={() => handleDecision('accept')}
-              disabled={actionLoading}
-            >
-              <span className="material-symbols-outlined">check</span>
-              Accept
-            </button>
-            <button
-              className="btn-change"
-              onClick={() => handleDecision('change')}
-              disabled={actionLoading}
-            >
-              <span className="material-symbols-outlined">edit</span>
-              Change
-            </button>
-            <button
-              className="btn-reject"
-              onClick={() => handleDecision('reject')}
-              disabled={actionLoading || !note.trim()}
-            >
-              <span className="material-symbols-outlined">close</span>
-              Reject
-            </button>
+        ) : (
+          <div className="clerk-notice">
+            Only a Supervisor can fix this record. Please ask your supervisor
+            to log in.
           </div>
-          <p className="text-xs text-secondary text-center mt-3">
-            Nothing is auto-corrected. A human decision is required for every
-            change.
-          </p>
-        </div>
+        )
       )}
     </div>
   );
