@@ -42,7 +42,7 @@ async function main(): Promise<void> {
 
   console.log(`Found ${truthPairs.size} planted duplicate donor pairs (Gold Standard).\n`);
 
-  console.log('Running Naive Baseline (phone_last4 exact match)...');
+  console.log('Running Sensible Baseline (sex + county + phone_last4 exact match)...');
   const naiveFindings = await runNaiveBaseline(pool, config);
   const naivePairs = new Set<string>();
   for (const f of naiveFindings) {
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
   console.log('| Method | True Positives (TP) | False Positives (FP) | False Negatives (FN) | Precision | Recall | F1 Score |');
   console.log('|---|---|---|---|---|---|---|');
   console.log(
-    `| **Naive Baseline (phone_last4)** | ${naiveMetrics.tp} | ${naiveMetrics.fp} | ${naiveMetrics.fn} | ${(naiveMetrics.precision * 100).toFixed(2)}% | ${(naiveMetrics.recall * 100).toFixed(2)}% | ${(naiveMetrics.f1 * 100).toFixed(2)}% |`,
+    `| **Sensible Human Baseline (sex + county + phone_last4)** | ${naiveMetrics.tp} | ${naiveMetrics.fp} | ${naiveMetrics.fn} | ${(naiveMetrics.precision * 100).toFixed(2)}% | ${(naiveMetrics.recall * 100).toFixed(2)}% | ${(naiveMetrics.f1 * 100).toFixed(2)}% |`,
   );
   console.log(
     `| **AI Fuzzy Matcher (Levenshtein + Date)** | ${fuzzyMetrics.tp} | ${fuzzyMetrics.fp} | ${fuzzyMetrics.fn} | ${(fuzzyMetrics.precision * 100).toFixed(2)}% | ${(fuzzyMetrics.recall * 100).toFixed(2)}% | ${(fuzzyMetrics.f1 * 100).toFixed(2)}% |`,
@@ -72,7 +72,7 @@ async function main(): Promise<void> {
 
   console.log('\n### Conclusion');
   console.log(
-    `The naive baseline achieved 100% recall but only ${(naiveMetrics.precision * 100).toFixed(2)}% precision due to 90,000+ random phone digit collisions, whereas the AI fuzzy matcher achieved ${(fuzzyMetrics.precision * 100).toFixed(2)}% precision and ${(fuzzyMetrics.recall * 100).toFixed(2)}% recall by scoring multi-attribute similarity.\n`,
+    `The sensible human heuristic baseline achieved 100.00% recall but only ${(naiveMetrics.precision * 100).toFixed(2)}% precision (${naiveMetrics.fp.toLocaleString()} false positive pairs across shared phone suffixes within counties), whereas the AI fuzzy matcher achieved ${(fuzzyMetrics.precision * 100).toFixed(2)}% precision and ${(fuzzyMetrics.recall * 100).toFixed(2)}% recall by scoring multi-attribute similarity.\n`,
   );
 
   await pool.end();
