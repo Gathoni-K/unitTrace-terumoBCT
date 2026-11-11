@@ -59,7 +59,7 @@ export const TASK_TYPE_LABELS: Record<string, string> = {
   invalid_isbt128: 'Invalid barcode ID',
   sensor_glitch: 'Broken fridge sensor',
   logger_gap: 'Fridge stopped reporting',
-  missing_donor_blood_group: 'Missing donor blood group',
+  missing_donor_blood_group: 'Missing blood group',
   unknown_patient_blood_group: 'Missing patient blood group',
   unconfirmed_transfer: 'Missing delivery receipt',
   donation_too_soon: 'Donor gave blood too soon',
@@ -93,7 +93,7 @@ export function formatFriendlyReason(reason?: string, taskType?: string): string
 
   // 1. AI duplicate match
   if (/AI similarity score/i.test(reason) || (taskType === 'duplicate_donor' && /duplicates based on/i.test(reason))) {
-    return 'Our AI thinks these might be the same person. They share the same gender, phone number ending, and birth date. A human needs to check.';
+    return 'Our AI thinks these might be the same person. They share the same gender, phone ending, and birth date. A human needs to check.';
   }
 
   // 2. Exact duplicate match

@@ -145,6 +145,10 @@
   gap: 16px;
 }
 
+.comparison-grid.single-record {
+  grid-template-columns: 1fr;
+}
+
 .record-card {
   background: var(--surface-container-lowest);
   border: 1px solid var(--surface-container);

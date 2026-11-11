@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getTask,
+  formatFriendlyReason,
   revealTaskPii,
   submitDecisionWithOfflineSync,
   TASK_TYPE_LABELS,
@@ -132,6 +133,8 @@ export function TaskDetail() {
   const isDecisionMade = decisionMade !== null;
   const suggestion = task.suggestion as Record<string, unknown> | undefined;
   const observedValue = suggestion?.observedValue;
+  const showsComparison =
+    task.type === 'duplicate_donor' || task.type === 'facility_name';
 
   return (
     <div className="task-detail-container">
@@ -165,14 +168,18 @@ export function TaskDetail() {
           <h3 className="font-label-md text-on-surface mb-1">
             Why this was flagged
           </h3>
-          <p className="font-body-md text-on-surface-variant">{task.reason}</p>
+          <p className="font-body-md text-on-surface-variant">
+            {formatFriendlyReason(task.reason, task.type)}
+          </p>
         </div>
       </div>
 
-      <div className="comparison-grid">
+      <div className={`comparison-grid${showsComparison ? '' : ' single-record'}`}>
         <div className="record-card">
           <div className="record-header">
-            <h3 className="font-label-md">Record A</h3>
+            <h3 className="font-label-md">
+              {showsComparison ? 'Record A' : 'Record'}
+            </h3>
             <span className="mono-tag">{task.recordIds[0]}</span>
           </div>
           <div className="record-body">
@@ -194,7 +201,7 @@ export function TaskDetail() {
             )}
             {observedValue !== undefined && (
               <div className="field-row">
-                <span className="field-label">Observed Value</span>
+                <span className="field-label">Recorded Value</span>
                 <span className="field-value text-error font-bold">
                   {String(observedValue)}
                 </span>
@@ -215,7 +222,7 @@ export function TaskDetail() {
           </div>
         </div>
 
-        {task.recordIds.length > 1 && (
+        {showsComparison && task.recordIds.length > 1 && (
           <div className="record-card">
             <div className="record-header">
               <h3 className="font-label-md">Record B</h3>
@@ -223,8 +230,10 @@ export function TaskDetail() {
             </div>
             <div className="record-body">
               <div className="field-row">
-                <span className="field-label">Reference ID</span>
-                <span className="field-value">{task.recordIds[1]}</span>
+                <span className="field-label">Date/Time of Record</span>
+                <span className="field-value">
+                  {new Date(task.createdAt).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
