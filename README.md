@@ -15,9 +15,9 @@ Hospital blood bank officers, regional blood transfusion service data stewards (
 They perform manual, end-of-shift reconciliations across disconnected paper registers, blood fridge temperature loggers, phlebotomy rosters, and emergency hospital requisition order books.
 
 **Where does it go wrong?**  
-In the 1-year operational dataset (45,699 donation attempts, 34,242 requested units), data fragmentation creates critical clinical and operational failures:
-
 Blood moves through a highly controlled lifecycle: donor screening → collection → testing → quarantine → storage → hospital compatibility. Each stage must preserve a rigorous link between the donor, unit, and patient. However, healthcare institutions rely on fragmented systems (like Terumo Vista or TOMEs for device capture, standalone hospital EMRs, and legacy Excel). UnitTrace does not replace these; it is a vendor-neutral cross-system layer that audits the data between them.
+
+In the 1-year operational dataset (45,699 donation attempts, 34,242 requested units), data fragmentation creates critical clinical and operational failures:
 
 - **Duplicate Donors (Premature Donations)**: **452 duplicate donors (~1% of donors)** are registered under conflicting IDs with slight typos. When donors give blood before the mandatory safety interval (3 months for men, 4 for women), the system fails to detect it, risking donor anaemia.
 - **Missing Vital Clinical Data**: **506 donor records (1.2%)** lack blood groups entirely, and **442 emergency requests (5%)** record patient blood group as `unknown`, causing lethal transfusion delays.
@@ -231,7 +231,7 @@ Furthermore, our data model respects Kenyan statutory requirements: no records a
 | Gathoni Karume | Data Engineer & Backend Engineer | Kenya | In person |
 | Natasha Hinga | Lead Frontend Engineer | Kenya | In person |
 | Charity Silah | Product Manager, Lead Researcher | Kenya | In person |
-| Tabitha Chiuri | Quality Assuarance and Testing Lead | Kenya | In person | 
+| Tabitha Chiuri | Quality Assurance and Testing Lead | Kenya | In person | 
 | Elizabeth Waceke | Assistant Researcher | Kenya | Virtual |
 
 

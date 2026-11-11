@@ -54,16 +54,102 @@ export async function listTasks(
 
 export const TASK_TYPE_LABELS: Record<string, string> = {
   duplicate_donor: 'Possible duplicate donor',
-  facility_name: 'Facility name mismatch',
-  implausible: 'Implausible Data',
-  invalid_isbt128: 'Invalid ISBT 128 ID',
-  sensor_glitch: 'Sensor glitch',
-  logger_gap: 'Temperature logger gap',
+  facility_name: 'Hospital name mismatch',
+  implausible: 'Impossible reading',
+  invalid_isbt128: 'Invalid barcode ID',
+  sensor_glitch: 'Broken fridge sensor',
+  logger_gap: 'Fridge stopped reporting',
   missing_donor_blood_group: 'Missing donor blood group',
-  unknown_patient_blood_group: 'Unknown patient blood group',
-  unconfirmed_transfer: 'Unconfirmed transfer',
-  donation_too_soon: 'Donation too close together',
+  unknown_patient_blood_group: 'Missing patient blood group',
+  unconfirmed_transfer: 'Missing delivery receipt',
+  donation_too_soon: 'Donor gave blood too soon',
 };
+
+export function formatRecordId(id?: string): string {
+  if (!id) return '';
+  if (id.startsWith('DNR-')) {
+    return `Donor #${id.slice(4)}`;
+  }
+  if (id.startsWith('UNT-')) {
+    return `Unit #${id.slice(4)}`;
+  }
+  if (id.startsWith('REQ-')) {
+    return `Request #${id.slice(4)}`;
+  }
+  if (id.startsWith('TRF-')) {
+    return `Transfer #${id.slice(4)}`;
+  }
+  if (id.startsWith('DON-')) {
+    return `Donation #${id.slice(4)}`;
+  }
+  if (id.startsWith('HSP-')) {
+    return `Hospital #${id.slice(4)}`;
+  }
+  return id;
+}
+
+export function formatFriendlyReason(reason?: string, taskType?: string): string {
+  if (!reason) return '';
+
+  // 1. AI duplicate match
+  if (/AI similarity score/i.test(reason) || (taskType === 'duplicate_donor' && /duplicates based on/i.test(reason))) {
+    return 'Our AI thinks these might be the same person. They share the same gender, phone number ending, and birth date. A human needs to check.';
+  }
+
+  // 2. Exact duplicate match
+  if (/Exact match on sex, home county, and phone/i.test(reason)) {
+    return 'These two records have the exact same gender, home county, and phone number ending. A human needs to check.';
+  }
+
+  // 3. Missing donor blood group
+  if (/has no recorded blood group/i.test(reason) || /without a confirmed blood group/i.test(reason)) {
+    return 'This donor is missing a blood group. We cannot safely match them to a patient in an emergency.';
+  }
+
+  // 4. Unknown patient blood group
+  if (/unknown patient blood group/i.test(reason)) {
+    return 'This emergency request has no patient blood group listed. Doctors cannot check blood compatibility without this.';
+  }
+
+  // 5. Unconfirmed transfer
+  if (/never confirmed received/i.test(reason) || /missing a receipt confirmation/i.test(reason)) {
+    return "Blood was sent to another hospital, but they haven't confirmed they received it.";
+  }
+
+  // 6. Sensor glitch
+  if (/not physically possible for a blood fridge/i.test(reason) || /sensor fault/i.test(reason) || taskType === 'sensor_glitch') {
+    return 'The fridge recorded an impossible temperature. The thermometer is probably broken.';
+  }
+
+  // 7. Logger gap
+  if (/dropped out for/i.test(reason) || /exceeding the \d+h threshold/i.test(reason) || taskType === 'logger_gap') {
+    return "The fridge didn't record its temperature for more than 6 hours.";
+  }
+
+  // 8. Donation too soon
+  if (/below the minimum interval of/i.test(reason) || taskType === 'donation_too_soon') {
+    return 'This person gave blood again before it was safe. (Wait 90 days for men, 120 days for women).';
+  }
+
+  // 9. Facility name
+  const facilityMatch = reason.match(/Facility name '([^']+)' does not match the canonical facility registry '([^']+)'/i);
+  if (facilityMatch) {
+    return `Hospital name '${facilityMatch[1]}' does not match the official registry '${facilityMatch[2]}'. This stops the record from showing up in national health reports.`;
+  }
+
+  // 10. ISBT 128
+  if (/does not conform to the ISBT 128/i.test(reason)) {
+    return 'The blood bag barcode does not match national barcode standards. This makes it hard to track across hospitals.';
+  }
+
+  // Fallback: replace any database column names / snake_case
+  return reason
+    .replace(/\bphone_last4\b/g, 'phone ending')
+    .replace(/\bbirth_date\b/g, 'date of birth')
+    .replace(/\bhome_county\b/g, 'home county')
+    .replace(/\breceived_at\b/g, 'delivery confirmation')
+    .replace(/\bdispatched_at\b/g, 'dispatch time');
+}
 
 export const TASK_TYPE_ICONS: Record<string, string> = {
   duplicate_donor: 'people',

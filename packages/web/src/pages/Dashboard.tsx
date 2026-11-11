@@ -95,9 +95,7 @@ export function Dashboard() {
             shield
           </span>
           <span className="font-label-sm">
-            <strong>Safeguard Active:</strong> Demonstration Data — Fictional
-            records for demonstration purposes. Raw hospital databases remain
-            write-protected.
+            <strong>Demo Mode:</strong> You are viewing fake test data. Your real hospital data is safe and untouched.
           </span>
         </div>
         <div className="flex gap-4 text-xs opacity-80">
@@ -121,7 +119,7 @@ export function Dashboard() {
                   <span className="material-symbols-outlined text-sm text-tertiary">
                     check_circle
                   </span>
-                  Smart Matching Active
+                  AI is helping find duplicates.
                 </span>
               </div>
               <h1 className="font-headline-lg text-on-surface">
@@ -139,7 +137,7 @@ export function Dashboard() {
                 </span>
                 <span className="hidden sm:inline text-outline-variant">|</span>
                 <span className="text-secondary text-xs">
-                  Automated inspection engine active (Kenya National Dataset · 8 Rule Sets)
+                  System is running 8 automated safety checks.
                 </span>
               </div>
             </div>
@@ -292,26 +290,26 @@ export function Dashboard() {
             <ProblemCard
               icon="device_thermostat"
               badge={`${sensorGlitches.toLocaleString()} sensors`}
-              title="Unusual temperature readings"
-              desc="Sensor data anomaly detected: impossible fridge log value recorded (-99°C, 99.9°C)."
+              title="Broken fridge sensors"
+              desc="The fridge recorded an impossible temperature. The thermometer is probably broken."
             />
             <ProblemCard
               icon="cloud_off"
               badge={`${loggerGaps.toLocaleString()} gaps`}
-              title="Missing temperature readings"
-              desc="Cold-chain logger dropout blackouts (>6 hours) during fridge power outages."
+              title="Fridge stopped reporting"
+              desc="The fridge didn't record its temperature for more than 6 hours."
             />
             <ProblemCard
               icon="local_shipping"
               badge={`${unconfirmedTransfers.toLocaleString()} dispatches`}
-              title="Transfers without confirmation"
-              desc="Dispatched blood units missing receiving hospital timestamp acknowledgement."
+              title="Missing delivery receipts"
+              desc="Blood was sent to another hospital, but they haven't confirmed they received it."
             />
             <ProblemCard
               icon="timelapse"
               badge={`${donationTooSoon.toLocaleString()} donors`}
-              title="Donations too close together"
-              desc="Donors registered with intervals below safety thresholds (90 days male / 120 days female)."
+              title="Donors gave blood too soon"
+              desc="This person gave blood again before it was safe. (Wait 90 days for men, 120 days for women)."
             />
           </div>
         </div>
@@ -543,7 +541,7 @@ export function Dashboard() {
                   System &amp; Connectivity
                 </h2>
                 <p className="font-body-md text-secondary text-xs">
-                  Diagnostic telemetry and distributed sync status.
+                  System health and connection status.
                 </p>
               </div>
               <span className="status-pill">
@@ -563,20 +561,20 @@ export function Dashboard() {
                 icon="verified"
                 title="Data-checking status"
                 subtitle="Checksum verification passed"
-                status="8 quality algorithms normal"
+                status="8 safety checks normal"
                 statusColor="text-on-surface"
               />
               <SystemRow
                 icon="sms"
                 title="Africa's Talking SMS Webhook"
-                subtitle="Two-way basic phone remediation active"
+                subtitle="Basic phone SMS actions active"
                 status="Operational"
                 statusColor="text-tertiary"
               />
               <SystemRow
                 icon="psychology"
                 title="Smart matching engine"
-                subtitle="Levenshtein + DOB proximity (99.56% precision)"
+                subtitle="Smart duplicate finder (99.56% accuracy)"
                 status="AI Active"
                 statusColor="text-tertiary"
               />
@@ -586,13 +584,13 @@ export function Dashboard() {
                 <span className="material-symbols-outlined text-sm">
                   schedule
                 </span>{' '}
-                Audit Trail: <strong>Immutable Append-Only</strong>
+                Audit Trail: <strong>Permanently recorded</strong>
               </span>
               <button type="button" className="text-primary hover:underline font-semibold flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">
                   refresh
                 </span>{' '}
-                Sync telemetry
+                Sync status
               </button>
             </div>
           </div>

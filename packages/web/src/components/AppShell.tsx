@@ -103,11 +103,10 @@ export function AppShell() {
               <span className="material-symbols-outlined text-lg">
                 verified_user
               </span>
-              <span>Safeguards Active</span>
+              <span>Demo Mode</span>
             </div>
             <p className="font-label-sm text-[12px] leading-relaxed text-secondary">
-              Demonstration Data · Live safeguards enabled · Never edits
-              original records automatically.
+              You are viewing fake test data. Your real hospital data is safe and untouched.
             </p>
           </div>
         </div>
