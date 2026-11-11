@@ -25,6 +25,7 @@ import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { RecordsToReview } from './pages/RecordsToReview';
+import { TaskDetail } from './pages/TaskDetail';
 import './styles.css';
 
 const routes = [
@@ -85,7 +86,7 @@ export function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/queue" element={<RecordsToReview />} />
-            <Route path="/tasks/:id" element={<TaskPage />} />
+            <Route path="/tasks/:id" element={<TaskDetail />} />
             <Route path="/audit" element={<Page title="audit" />} />
             <Route path="/methods" element={<Page title="methods" />} />
             <Route path="/settings" element={<Page title="settings" />} />

@@ -65,3 +65,39 @@ export const TASK_TYPE_ICONS: Record<string, string> = {
   unconfirmed_transfer: 'local_shipping',
   donation_too_soon: 'timelapse',
 };
+
+/* ==========================================================================
+   Task Detail API functions (append to the bottom of api.ts)
+   ========================================================================== */
+
+export interface DecisionPayload {
+  action: 'accept' | 'change' | 'reject' | 'approve' | 'send_back' | 'escalate';
+  modified_suggestion?: Record<string, unknown>;
+  user_id?: string;
+  actor?: string;
+  user_role?: 'clerk' | 'supervisor';
+  channel?: 'web' | 'offline_sync' | 'sms' | 'ussd';
+  note?: string;
+}
+
+export async function getTask(id: string): Promise<TaskRecord> {
+  const res = await fetch(`${API_BASE}/api/tasks/${id}`);
+  if (!res.ok) throw new Error(`Failed to get task: ${res.status}`);
+  return res.json();
+}
+
+export async function revealTaskPii(id: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`);
+  if (!res.ok) throw new Error(`Failed to reveal PII: ${res.status}`);
+  return res.json();
+}
+
+export async function submitDecision(id: string, payload: DecisionPayload): Promise<{ ok: boolean; task?: TaskRecord }> {
+  const res = await fetch(`${API_BASE}/api/tasks/${id}/decision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to submit decision: ${res.status}`);
+  return res.json();
+}

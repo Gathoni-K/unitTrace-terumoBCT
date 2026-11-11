@@ -1,0 +1,204 @@
+/* ==========================================================================
+   packages/web/src/pages/TaskDetail.css
+   ========================================================================== */
+
+.task-detail-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  width: fit-content;
+  transition: color 0.2s;
+}
+.btn-back:hover {
+  color: var(--primary);
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Reason Box */
+.reason-box {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-container-low);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--border-radius-lg);
+}
+
+/* Comparison Grid */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.record-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--surface-container);
+  border-radius: var(--border-radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--surface-container);
+}
+
+.record-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--surface-container);
+  font-size: 14px;
+}
+.field-row:last-child {
+  border-bottom: none;
+}
+.field-label {
+  color: var(--secondary);
+}
+.field-value {
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+/* Lock Notice */
+.lock-notice {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: var(--error-container);
+  color: var(--on-error-container);
+  border-radius: var(--border-radius-xl);
+  align-items: flex-start;
+}
+
+/* Action Area */
+.action-area {
+  background: var(--surface-container-lowest);
+  padding: 24px;
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--surface-container);
+}
+
+.note-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--surface-container);
+  border-radius: var(--border-radius-lg);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--on-surface);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.note-input:focus {
+  border-color: var(--primary);
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.action-buttons button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  border: none;
+  border-radius: var(--border-radius-xl);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.action-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-accept {
+  background: #15803d;
+  color: #ffffff;
+}
+.btn-accept:hover:not(:disabled) {
+  background: #166534;
+}
+
+.btn-change {
+  background: #b45309;
+  color: #ffffff;
+}
+.btn-change:hover:not(:disabled) {
+  background: #92400e;
+}
+
+.btn-reject {
+  background: var(--error);
+  color: var(--on-error);
+}
+.btn-reject:hover:not(:disabled) {
+  background: #93000a;
+}
+
+/* Success Box */
+.success-box {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  background: #dcfce7;
+  color: #14532d;
+  border-radius: var(--border-radius-xl);
+  border: 1px solid #86efac;
+  align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
