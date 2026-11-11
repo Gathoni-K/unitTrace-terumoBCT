@@ -113,8 +113,14 @@ export function TaskDetail() {
 
   // Extract duplicate donor details
   const isDuplicateDonor = task.type === 'duplicate_donor';
-  const rawScore = typeof suggestion?.score === 'number' ? suggestion.score : Number(task.confidence);
-  const similarityScorePct = !isNaN(rawScore) ? `${Math.round(rawScore * 100)}%` : '95%';
+  const rawScore =
+    typeof suggestion?.score === 'number'
+      ? suggestion.score
+      : task.confidence !== 'rule' && !isNaN(Number(task.confidence))
+      ? Number(task.confidence)
+      : NaN;
+  const isGenuineAiMatch = isDuplicateDonor && task.confidence !== 'rule' && !isNaN(rawScore);
+  const similarityScorePct = isGenuineAiMatch ? `${Math.round(rawScore * 100)}%` : null;
   const matchedFields = (suggestion?.matched_fields as string[]) || ['phone_last4', 'home_county', 'birth_date'];
 
   return (
@@ -185,7 +191,7 @@ export function TaskDetail() {
       </div>
 
       {/* AI Smart Match Summary for Duplicate Donors */}
-      {isDuplicateDonor && (
+      {isGenuineAiMatch && similarityScorePct && (
         <div className="ai-summary-card">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -296,7 +302,9 @@ export function TaskDetail() {
                   </div>
                   <div className="field-row">
                     <span className="field-label">Matching Confidence</span>
-                    <span className="field-value">{similarityScorePct}</span>
+                    <span className="field-value">
+                      {similarityScorePct ?? (task.confidence === 'rule' ? 'Rule-based flag' : task.confidence)}
+                    </span>
                   </div>
                 </>
               ) : (

@@ -5,7 +5,7 @@
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://unittrace-terumobct.onrender.com';
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://unittrace-terumobct.onrender.com';
 
 export interface TaskRecord {
   id: string;
@@ -283,16 +283,4 @@ export async function syncQueue(): Promise<{ synced: number; failed: number }> {
   }
 
   return { synced, failed };
-}
-
-// Global automatic synchronization on 'online' event
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    console.log('[Offline Sync] Connection restored, processing queued decisions...');
-    syncQueue().then(({ synced }) => {
-      if (synced > 0) {
-        console.log(`[Offline Sync] Successfully synced ${synced} decision(s) to server.`);
-      }
-    });
-  });
 }
