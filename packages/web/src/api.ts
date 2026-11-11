@@ -284,7 +284,7 @@ export async function getTask(id: string): Promise<TaskRecord> {
   return res.json();
 }
 
-export async function revealTaskPii(id: string, userId?: string): Promise<TaskRecord> {
+export async function revealTaskPii(id: string, userId: string): Promise<TaskRecord> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

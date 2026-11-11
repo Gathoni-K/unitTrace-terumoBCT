@@ -28,6 +28,7 @@ export function TaskDetail() {
     currentRole === 'supervisor'
       ? 'Dr. Mwangi (Supervisor)'
       : 'Sarah Achieng (Data Clerk)';
+  const userId = currentRole === 'supervisor' ? 'supervisor' : 'clerk';
 
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ export function TaskDetail() {
     if (!id) return;
     setRevealingPii(true);
     try {
-      const unmaskedTask = await revealTaskPii(id);
+      const unmaskedTask = await revealTaskPii(id, userId);
       setTask(unmaskedTask);
       setPiiRevealed(true);
       showToast(
@@ -93,7 +94,7 @@ export function TaskDetail() {
       showToast(
         'success',
         res.status === 'queued'
-          ? `Decision queued offline. Will sync when connection returns.`
+          ? '⚠️ Queued locally. Will sync when connection returns.'
           : `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
       );
     } catch (err) {
@@ -157,7 +158,7 @@ export function TaskDetail() {
         <div>
           <span className="mono-tag">#{task.id}</span>
           <h1 className="font-headline-lg text-on-surface mt-2">
-            {TASK_TYPE_LABELS[task.type] ?? task.type}
+            {TASK_TYPE_LABELS[task.type] ?? 'Unknown Issue'}
           </h1>
         </div>
         <div
@@ -218,6 +219,22 @@ export function TaskDetail() {
               </div>
             )}
             <div className="field-row">
+              <span className="field-label">Birth date</span>
+              <span className="field-value">
+                {piiRevealed
+                  ? String(suggestion?.birth_date ?? 'Not available')
+                  : '1992-XX-XX'}
+              </span>
+            </div>
+            <div className="field-row">
+              <span className="field-label">Phone ending</span>
+              <span className="field-value">
+                {piiRevealed
+                  ? String(suggestion?.phone_last4 ?? 'Not available')
+                  : 'XXXX'}
+              </span>
+            </div>
+            <div className="field-row">
               <span className="field-label">Detected by</span>
               <span className="field-value">
                 {task.source === 'smart' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
@@ -239,6 +256,22 @@ export function TaskDetail() {
               <span className="mono-tag">{task.recordIds[1]}</span>
             </div>
             <div className="record-body">
+              <div className="field-row">
+                <span className="field-label">Birth date</span>
+                <span className="field-value">
+                  {piiRevealed
+                    ? String(suggestion?.birth_date ?? 'Not available')
+                    : '1992-XX-XX'}
+                </span>
+              </div>
+              <div className="field-row">
+                <span className="field-label">Phone ending</span>
+                <span className="field-value">
+                  {piiRevealed
+                    ? String(suggestion?.phone_last4 ?? 'Not available')
+                    : 'XXXX'}
+                </span>
+              </div>
               <div className="field-row">
                 <span className="field-label">Date/Time of Record</span>
                 <span className="field-value">
@@ -272,7 +305,7 @@ export function TaskDetail() {
             </h3>
             <p className="text-sm text-on-surface-variant mt-1">
               {isQueuedOffline
-                ? 'Queued offline. Will sync when connection returns.'
+                ? '⚠️ Queued locally. Will sync when connection returns.'
                 : 'The change has been logged in the audit trail. If this requires supervisor approval, it will now appear in their queue.'}
             </p>
           </div>
