@@ -362,7 +362,7 @@ export function TaskDetail() {
             </p>
           </div>
         </div>
-      ) : (
+      ) : currentRole === 'supervisor' ? (
         <div className="action-area">
           <h3 className="font-label-lg text-on-surface mb-2">
             What would you like to do?
@@ -421,7 +421,7 @@ export function TaskDetail() {
             change.
           </p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
