@@ -288,8 +288,16 @@ export async function syncQueue(): Promise<{ synced: number; failed: number }> {
       }
       synced++;
     } catch (err) {
-      console.error(`[Offline Sync] Failed to sync decision for task ${item.taskId}:`, err);
-      failed++;
+      // If already resolved (e.g. concurrent review or sync), clear from local queue to prevent duplicate processing
+      if ((err as Error).message.includes('already resolved')) {
+        if (item.id !== undefined) {
+          await db.delete(STORE_NAME, item.id);
+        }
+        synced++;
+      } else {
+        console.error(`[Offline Sync] Failed to sync decision for task ${item.taskId}:`, err);
+        failed++;
+      }
     }
   }
 

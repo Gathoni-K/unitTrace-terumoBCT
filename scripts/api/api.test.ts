@@ -222,6 +222,67 @@ describe('Task Management API', () => {
     expect(json.error).toContain('supervisors');
   });
 
+  it('POST /api/tasks/:id/decision blocks spoofed x-user-role: superadmin from merging duplicates', async () => {
+    mockClientQuery
+      .mockResolvedValueOnce({}) // BEGIN
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            task_id: 101,
+            type: 'duplicate_donor',
+            status: 'open',
+            record_ids: ['DNR-001', 'DNR-002'],
+            suggestion: { action: 'review_merge' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({}); // ROLLBACK
+
+    const res = await fetch(`${baseUrl}/api/tasks/101/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': 'superadmin', // spoofed role!
+      },
+      body: JSON.stringify({ action: 'accept' }),
+    });
+
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toContain('Forbidden');
+    expect(json.error).toContain('supervisors');
+  });
+
+  it('POST /api/tasks/:id/decision returns 409 Conflict when task is already resolved', async () => {
+    mockClientQuery
+      .mockResolvedValueOnce({}) // BEGIN
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            task_id: 101,
+            type: 'missing_donor_blood_group',
+            status: 'done', // already resolved!
+            record_ids: ['DNR-001'],
+            suggestion: {},
+          },
+        ],
+      })
+      .mockResolvedValueOnce({}); // ROLLBACK
+
+    const res = await fetch(`${baseUrl}/api/tasks/101/decision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': 'supervisor',
+      },
+      body: JSON.stringify({ action: 'accept' }),
+    });
+
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toContain('already resolved');
+  });
+
   it('POST /api/tasks/:id/decision allows clerk to resolve missing_donor_blood_group', async () => {
     mockClientQuery
       .mockResolvedValueOnce({}) // BEGIN
@@ -331,6 +392,19 @@ describe('Task Management API', () => {
     expect(mockQuery).toHaveBeenCalledTimes(2);
     expect(mockQuery.mock.calls[1][0]).toContain('insert into public.access_log');
     expect(mockQuery.mock.calls[1][1]).toEqual(['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '105']);
+  });
+
+  it('POST /api/tasks/:id/reveal returns 404 when task ID does not exist', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // not found
+
+    const res = await fetch(`${baseUrl}/api/tasks/99999/reveal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.error).toContain('not found');
   });
 
   it('GET /api/metrics/before-after returns headline metrics', async () => {
@@ -476,6 +550,95 @@ describe('Task Management API', () => {
       expect(res.headers.get('content-type')).toContain('text/plain');
       const text = await res.text();
       expect(text).toBe('Error: Only supervisors can approve merges. Please use the web app.');
+    });
+
+    it("returns friendly error when SMS references nonexistent task", async () => {
+      mockClientQuery
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [] }) // Task not found
+        .mockResolvedValueOnce({}); // ROLLBACK
+
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '+254700000000',
+          text: '9999 OK',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toBe('Error: Task 9999 not found.');
+    });
+
+    it("returns friendly error when SMS references already resolved task", async () => {
+      mockClientQuery
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              task_id: 41,
+              type: 'unconfirmed_transfer',
+              status: 'done', // already resolved!
+              record_ids: ['TRF-001'],
+              suggestion: {},
+            },
+          ],
+        })
+        .mockResolvedValueOnce({}); // ROLLBACK
+
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '+254700000000',
+          text: '41 OK',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toBe('Error: Task 41 is already resolved.');
+    });
+
+    it("processes and logs unknown incoming phone numbers", async () => {
+      mockClientQuery
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              task_id: 42,
+              type: 'unconfirmed_transfer',
+              status: 'open',
+              record_ids: ['TRF-002'],
+              suggestion: {},
+            },
+          ],
+        })
+        .mockResolvedValueOnce({}) // UPDATE
+        .mockResolvedValueOnce({}) // INSERT decisions
+        .mockResolvedValueOnce({ rows: [{ id: '999' }] }) // INSERT audit_log
+        .mockResolvedValueOnce({}); // COMMIT
+
+      const res = await fetch(`${baseUrl}/api/webhooks/africastalking/sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '+123456789',
+          text: '42 NO',
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toBe('Task 42 rejected. Logged to audit trail.');
+
+      // Check decisions insert logged '+123456789'
+      const decisionCall = mockClientQuery.mock.calls.find((c) =>
+        c[0].includes('insert into public.decisions'),
+      );
+      expect(decisionCall?.[1]).toContain('SMS reply from +123456789');
     });
   });
 });
