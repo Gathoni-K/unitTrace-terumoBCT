@@ -16,6 +16,9 @@ They perform manual, end-of-shift reconciliations across disconnected paper regi
 
 **Where does it go wrong?**  
 In the 1-year operational dataset (45,699 donation attempts, 34,242 requested units), data fragmentation creates critical clinical and operational failures:
+
+Blood moves through a highly controlled lifecycle: donor screening → collection → testing → quarantine → storage → hospital compatibility. Each stage must preserve a rigorous link between the donor, unit, and patient. However, healthcare institutions rely on fragmented systems (like Terumo Vista or TOMEs for device capture, standalone hospital EMRs, and legacy Excel). UnitTrace does not replace these; it is a vendor-neutral cross-system layer that audits the data between them.
+
 - **Duplicate Donors (Premature Donations)**: **452 duplicate donors (~1% of donors)** are registered under conflicting IDs with slight typos. When donors give blood before the mandatory safety interval (3 months for men, 4 for women), the system fails to detect it, risking donor anaemia.
 - **Missing Vital Clinical Data**: **506 donor records (1.2%)** lack blood groups entirely, and **442 emergency requests (5%)** record patient blood group as `unknown`, causing lethal transfusion delays.
 - **DHIS2 National Reporting Breakdown**: **710 hospital requests (14%)** have facility names typed with differing county abbreviations and casing (`Kiambu CRH` vs `Kiambu County Referral Hospital`), silently dropping them from national dashboards like DHIS2 / KHIS.
@@ -143,6 +146,8 @@ flowchart LR
 - **HL7 FHIR R4**: Maps clean donors to `Patient`, units to `BiologicallyDerivedProduct`, transfers to `SupplyDelivery`, and requests to `ServiceRequest` ([`docs/fhirMapping.md`](docs/fhirMapping.md)).
 - **ISBT 128**: Regex validation (`^(U\d{4}-[A-Z0-9]{3,4}-\d{6}-(RBC|WB|PLT|FFP|CRYO)|W\d{4}\s\d{2}\s\d{6})$`) of unique donation identifiers.
 - **DHIS2 / KHIS**: Automated normalisation of facility name discrepancies into canonical national master facility list records.
+- **Data-Quality Frameworks:** Aligned with the WHO Data Quality Review (DQR) toolkit and the Kahn Harmonized DQA Framework, targeting Conformance (ISBT 128), Completeness (missing blood groups), and Plausibility (cold chain glitches).
+- **Non-Destructive Architecture:** Zero destructive edits to source tables. Source records remain immutable in staging, while approved fixes are written to isolated clean tables and tracked via an append-only audit log (aligning with SCD Type 2 principles).
 
 Detailed architecture specifications are documented in [`docs/architecture.md`](docs/architecture.md).
 
@@ -175,6 +180,7 @@ Detailed architecture specifications are documented in [`docs/architecture.md`](
   Each task presents an explainable summary (e.g., *"Donors D-0012 and D-0459 share identical birth dates, last 4 phone digits (4821), and similar county ('Kiambu' vs 'Kaimbu'). Confidence: 94%"*).
 - **Who approves it**:  
   Frontline clerks can resolve missing blood groups and cold-chain flags. High-consequence duplicate donor merges **strictly require a supervisor** (`x-user-role: supervisor`). Clerks are blocked with HTTP 403.
+- **Confidence-Tiered HITL:** In alignment with rigorous health-informatics standards, our human-in-the-loop workflow enforces a strict boundary: AI only suggests. High-consequence merges require dual-verification (Supervisor sign-off), while low-confidence matches are suppressed to prevent alert fatigue.
 - **What happens if the AI is wrong or offline**:  
   - If wrong: Reviewers can Reject or Change recommendations; the system never auto-merges.
   - If offline: The engine supports an instant rule-based fallback via `--no-ai` CLI flag or `"enable_fuzzy_matching": false` in country config. It prints:  
@@ -207,6 +213,8 @@ Detailed methodology is documented in [`docs/aiMethodology.md`](docs/aiMethodolo
   Complies with the Kenya Data Protection Act 2019 (s.46 health data lawful basis). Frontline staff view masked dates (`1995-XX-XX`) and phones (`XXXX`). Break-glass unmasking is immutably logged to `public.access_log`.
 - **Setting Up for Another Site or Country**:  
   Policies are decoupled into country JSON files. Swapping from Kenya to Uganda takes a single flag (`--config=config/country.uganda.json`), adjusting inter-donation intervals (90 vs 120 days), phone format regexes, and local language strings without modifying code.
+
+Furthermore, our data model respects Kenyan statutory requirements: no records are ever deleted (supporting the 7-year retention rule), and our facility name normalization directly protects the integrity of national DHIS2/KHIS reporting, mitigating the fragmentation that Kenyan health-data experts warn breaks national dashboards.
 
 ---
 
