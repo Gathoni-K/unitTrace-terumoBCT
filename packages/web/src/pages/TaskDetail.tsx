@@ -67,6 +67,17 @@ export function TaskDetail() {
 
   const handleDecision = async (action: 'accept' | 'change' | 'reject') => {
     if (!id) return;
+    if (
+      currentRole === 'clerk' &&
+      task?.type === 'duplicate_donor' &&
+      action === 'accept'
+    ) {
+      showToast(
+        'error',
+        'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+      );
+      return;
+    }
     setActionLoading(true);
     try {
       const res = await submitDecisionWithOfflineSync(id, {

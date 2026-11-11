@@ -2,15 +2,14 @@
    packages/web/src/components/SignIn.tsx
    ========================================================================== */
 import React, { useState } from 'react';
-import { useAuth } from '../providers';
+import { useAuth, useLanguage, ThemeToggle } from '../providers';
 import { useT } from '../i18n';
-import type { Language } from '../types';
 import './SignIn.css';
 
 export function SignIn({ onSignIn }: { onSignIn: () => void }) {
   const { setRole } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const [role, setLocalRole] = useState<'clerk' | 'supervisor'>('clerk');
-  const [language, setLanguage] = useState<Language>('en');
   const t = useT(language);
 
   const handleSignIn = (e: React.FormEvent) => {
@@ -43,9 +42,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
               Kiswahili
             </button>
           </div>
-          <button className="theme-toggle-btn">
-            <span className="material-symbols-outlined">light_mode</span>
-          </button>
+          <ThemeToggle />
         </div>
       </div>
 
@@ -63,7 +60,6 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
 
         <div className="signin-brand">
           <div className="signin-logo-box">
-            {/* Using a text placeholder since we don't have the image asset yet */}
             <span className="logo-placeholder">UT</span>
           </div>
           <h1 className="font-headline-xl text-on-surface">UnitTrace</h1>
@@ -80,7 +76,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Role Selector */}
           <div className="form-group">
             <label className="font-label-md text-on-surface mb-2 block">
-              Operational Role
+              {t('operationalRole')}
             </label>
             <div className="role-grid">
               <button
@@ -96,7 +92,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
                         : 'text-on-surface font-label-md'
                     }
                   >
-                    Data Clerk
+                    {t('clerk')}
                   </span>
                   <span
                     className={`material-symbols-outlined ${role === 'clerk' ? 'text-primary' : 'text-outline-variant'}`}
@@ -124,7 +120,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
                         : 'text-on-surface font-label-md'
                     }
                   >
-                    Supervisor
+                    {t('supervisor')}
                   </span>
                   <span
                     className={`material-symbols-outlined ${role === 'supervisor' ? 'text-primary' : 'text-outline-variant'}`}
@@ -144,7 +140,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Facility Dropdown */}
           <div className="form-group">
             <label className="font-label-md text-on-surface mb-1 block">
-              Facility / Centre
+              {t('facilityLabel')}
             </label>
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">
@@ -182,8 +178,12 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
               <input
                 type="email"
                 className="input-field pl-10"
-                defaultValue="sarah.achieng@bloodtransfusion.go.ke"
-                required
+                value={
+                  role === 'supervisor'
+                    ? 'j.mwangi@bloodtransfusion.go.ke'
+                    : 'sarah.achieng@bloodtransfusion.go.ke'
+                }
+                readOnly
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Submit Button */}
           <button type="submit" className="btn-primary w-full mt-2">
             <span className="material-symbols-outlined">login</span>
-            Sign in to UnitTrace
+            {t('signInButton')}
           </button>
 
           {/* Offline Notice */}
@@ -250,6 +250,13 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
             automatically. Every reconciliation and deferral flag requires
             qualified human verification.
           </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 text-on-surface-variant mt-2 text-xs">
+          <span className="material-symbols-outlined text-sm">translate</span>
+          <span>
+            EN / Kiswahili covers navigation and auth. Page content translation
+            is on the roadmap.
+          </span>
         </div>
         <div className="flex items-center justify-center gap-2 text-on-surface-variant mt-4">
           <span className="material-symbols-outlined text-sm">info</span>

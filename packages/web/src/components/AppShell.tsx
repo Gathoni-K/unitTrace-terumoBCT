@@ -1,25 +1,22 @@
 /* ==========================================================================
    packages/web/src/components/AppShell.tsx
    ========================================================================== */
-import React, { useState } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../providers';
+import React from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useAuth, useLanguage, ThemeToggle } from '../providers';
 import { useT } from '../i18n';
-import type { Language } from '../types';
 import './AppShell.css';
 
 export function AppShell() {
   const { role } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const location = useLocation();
-  const navigate = useNavigate();
-  const [language, setLanguage] = useState<Language>('en');
   const t = useT(language);
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <div className="app-layout">
-      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="sidebar-brand">
@@ -35,23 +32,22 @@ export function AppShell() {
 
         <div className="sidebar-nav">
           <div className="sidebar-section">
-            <span className="sidebar-label">Main Operations</span>
+            <span className="sidebar-label">
+              {t('mainOps') || 'Main Operations'}
+            </span>
             <Link
               to="/"
               className={`nav-item ${isActive('/') ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">dashboard</span>
-              <span>Dashboard</span>
+              <span>{t('summary') || 'Dashboard'}</span>
             </Link>
             <Link
               to="/queue"
               className={`nav-item ${isActive('/queue') ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">fact_check</span>
-              <span>Records to review</span>
-              <span className="nav-badge bg-secondary-container text-on-secondary-fixed">
-                24
-              </span>
+              <span>{t('queue') || 'Records to review'}</span>
             </Link>
             {role === 'supervisor' && (
               <Link
@@ -59,10 +55,7 @@ export function AppShell() {
                 className={`nav-item ${isActive('/approvals') ? 'active' : ''}`}
               >
                 <span className="material-symbols-outlined">check_circle</span>
-                <span>Approvals</span>
-                <span className="nav-badge bg-error-container text-on-error-container">
-                  6
-                </span>
+                <span>{t('approvals') || 'Approvals'}</span>
               </Link>
             )}
             <Link
@@ -70,32 +63,20 @@ export function AppShell() {
               className={`nav-item ${isActive('/audit') ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">history</span>
-              <span>Activity history</span>
+              <span>{t('audit') || 'Activity history'}</span>
             </Link>
           </div>
 
           <div className="sidebar-section">
-            <span className="sidebar-label">Tools & Diagnostics</span>
+            <span className="sidebar-label">
+              {t('tools') || 'Tools & Diagnostics'}
+            </span>
             <Link
               to="/methods"
               className={`nav-item ${isActive('/methods') ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">bar_chart</span>
-              <span>Method results</span>
-            </Link>
-            <Link
-              to="/settings"
-              className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
-            >
-              <span className="material-symbols-outlined">settings</span>
-              <span>Settings</span>
-            </Link>
-            <Link
-              to="/sms-simulator"
-              className={`nav-item ${isActive('/sms-simulator') ? 'active' : ''}`}
-            >
-              <span className="material-symbols-outlined">phone_android</span>
-              <span>SMS / USSD simulator</span>
+              <span>{t('methods') || 'Method results'}</span>
             </Link>
           </div>
         </div>
@@ -116,15 +97,13 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className="main-wrapper">
-        {/* TOP BAR */}
         <header className="topbar">
           <div className="topbar-left">
             <div className="status-chip">
               <span className="status-dot"></span>
               <span className="font-label-sm text-on-surface font-medium">
-                Online
+                {t('online') || 'Online'}
               </span>
             </div>
             <div className="topbar-sync">
@@ -150,30 +129,25 @@ export function AppShell() {
                 SW
               </button>
             </div>
-            <button className="icon-btn" aria-label="Toggle theme">
-              <span className="material-symbols-outlined">light_mode</span>
-            </button>
+            <ThemeToggle />
             <button className="icon-btn" aria-label="Notifications">
               <span className="material-symbols-outlined">notifications</span>
               <span className="notification-dot"></span>
             </button>
             <div className="topbar-divider"></div>
             <div className="user-profile">
-              <div className="user-avatar">SA</div>
+              <div className="user-avatar">
+                {role === 'supervisor' ? 'DM' : 'SA'}
+              </div>
               <div className="user-info">
-                <span className="font-label-md text-on-surface leading-none">
-                  Sarah Achieng
-                </span>
-                <span className="user-role">Data Clerk</span>
-                <span className="font-label-sm text-[11px] text-secondary mt-0.5">
-                  Nairobi Regional Blood Centre
+                <span className="user-role">
+                  {role === 'supervisor' ? 'Supervisor' : 'Data Clerk'}
                 </span>
               </div>
             </div>
           </div>
         </header>
 
-        {/* PAGE CONTENT */}
         <main className="main-content">
           <Outlet />
         </main>

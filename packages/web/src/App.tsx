@@ -96,7 +96,10 @@ export function App() {
               element={<Page title="smsSimulator" />}
             />
             <Route element={<RequireRole role="supervisor" />}>
-              <Route path="/approvals" element={<Page title="approvals" />} />
+              <Route
+                path="/approvals"
+                element={<RecordsToReview defaultTab="waiting_supervisor" />}
+              />
             </Route>
           </Route>
         </Route>

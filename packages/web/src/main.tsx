@@ -9,22 +9,25 @@ import {
   ConnectionProvider,
   DataClientProvider,
   EngineStatusProvider,
+  LanguageProvider,
 } from './providers';
 import { ToastProvider } from './components/Toast';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <ConnectionProvider>
-        <EngineStatusProvider>
-          <DataClientProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </DataClientProvider>
-        </EngineStatusProvider>
-      </ConnectionProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <ConnectionProvider>
+          <EngineStatusProvider>
+            <DataClientProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </DataClientProvider>
+          </EngineStatusProvider>
+        </ConnectionProvider>
+      </AuthProvider>
+    </LanguageProvider>
   </React.StrictMode>,
 );

@@ -17,12 +17,14 @@ const STATUS_TABS = [
   { key: 'done', label: 'Done' },
 ];
 
-export function RecordsToReview() {
+export function RecordsToReview({
+  defaultTab = 'open',
+}: { defaultTab?: string } = {}) {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('open');
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [typeFilter, setTypeFilter] = useState('');
   const [search, setSearch] = useState('');
   const [isAuditOpen, setIsAuditOpen] = useState(false); // For the Audit panel
@@ -53,7 +55,7 @@ export function RecordsToReview() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, typeFilter]);
+  }, [activeTab, typeFilter, defaultTab]);
 
   const filtered = tasks.filter((t) => {
     if (!search) return true;

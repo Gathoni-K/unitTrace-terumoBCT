@@ -3,12 +3,17 @@
    ========================================================================== */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getMetrics, getAuditLogs, type BeforeAfterReport, type AuditLogItem } from '../api';
+import {
+  getMetrics,
+  getAuditLogs,
+  type BeforeAfterReport,
+  type AuditLogItem,
+} from '../api';
 import { useAuth } from '../providers';
 import './Dashboard.css';
 
 export function Dashboard() {
-  const { role } = useAuth();
+  const { role, setRole } = useAuth();
   const userRole = role === 'supervisor' ? 'supervisor' : 'clerk';
   const userName = userRole === 'supervisor' ? 'Dr. Mwangi' : 'Sarah';
 
@@ -21,7 +26,10 @@ export function Dashboard() {
     getMetrics()
       .then(setMetrics)
       .catch((err) => {
-        console.warn('Live metrics API fallback to starter dataset baseline:', err);
+        console.warn(
+          'Live metrics API fallback to starter dataset baseline:',
+          err,
+        );
       })
       .finally(() => setLoading(false));
 
@@ -55,23 +63,40 @@ export function Dashboard() {
   }, [metrics]);
 
   // Real defect numbers computed from live backend or starter dataset
-  const unconfirmedTransfers = breakdownMap['unconfirmed_transfer']?.before ?? 1046;
-  const missingDonorBloodGroup = breakdownMap['missing_donor_blood_group']?.before ?? 506;
-  const unknownPatientBloodGroup = breakdownMap['unknown_patient_blood_group']?.before ?? 442;
+  const unconfirmedTransfers =
+    breakdownMap['unconfirmed_transfer']?.before ?? 1046;
+  const missingDonorBloodGroup =
+    breakdownMap['missing_donor_blood_group']?.before ?? 506;
+  const unknownPatientBloodGroup =
+    breakdownMap['unknown_patient_blood_group']?.before ?? 442;
   const duplicateDonors = breakdownMap['duplicate_donor']?.before ?? 454;
-  const facilityNamesMismatch = (breakdownMap['implausible']?.before || breakdownMap['facility_name']?.before) ?? 710;
+  const facilityNamesMismatch =
+    (breakdownMap['implausible']?.before ||
+      breakdownMap['facility_name']?.before) ??
+    710;
   const loggerGaps = breakdownMap['logger_gap']?.before ?? 370;
   const sensorGlitches = breakdownMap['sensor_glitch']?.before ?? 55;
   const donationTooSoon = breakdownMap['donation_too_soon']?.before ?? 67;
 
   // Aggregate totals
-  const totalDefects = metrics?.beforeValue && metrics.beforeValue > 0
-    ? metrics.beforeValue
-    : (unconfirmedTransfers + missingDonorBloodGroup + unknownPatientBloodGroup + duplicateDonors + facilityNamesMismatch + loggerGaps + sensorGlitches + donationTooSoon);
+  const totalDefects =
+    metrics?.beforeValue && metrics.beforeValue > 0
+      ? metrics.beforeValue
+      : unconfirmedTransfers +
+        missingDonorBloodGroup +
+        unknownPatientBloodGroup +
+        duplicateDonors +
+        facilityNamesMismatch +
+        loggerGaps +
+        sensorGlitches +
+        donationTooSoon;
 
   const totalResolved = metrics?.resolvedCount ?? 0;
   const totalOpen = Math.max(0, totalDefects - totalResolved);
-  const waitingSupervisor = Math.max(0, duplicateDonors - (breakdownMap['duplicate_donor']?.resolved ?? 0));
+  const waitingSupervisor = Math.max(
+    0,
+    duplicateDonors - (breakdownMap['duplicate_donor']?.resolved ?? 0),
+  );
 
   return (
     <div className="dashboard-container">
@@ -129,11 +154,71 @@ export function Dashboard() {
                 </span>
                 <span className="hidden sm:inline text-outline-variant">|</span>
                 <span className="text-secondary text-xs">
-                  Automated inspection engine active (Kenya National Dataset · 8 Rule Sets)
+                  Automated inspection engine active (Kenya National Dataset · 8
+                  Rule Sets)
                 </span>
               </div>
             </div>
             <div className="hero-actions">
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '4px',
+                  padding: '4px',
+                  background: 'var(--surface-container)',
+                  borderRadius: 'var(--border-radius-lg)',
+                  marginRight: '8px',
+                }}
+              >
+                <button
+                  onClick={() => {
+                    localStorage.setItem('userRole', 'clerk');
+                    setRole('clerk');
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background:
+                      role === 'clerk'
+                        ? 'var(--primary-container)'
+                        : 'transparent',
+                    color:
+                      role === 'clerk'
+                        ? 'var(--on-primary)'
+                        : 'var(--on-surface-variant)',
+                  }}
+                >
+                  Clerk
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('userRole', 'supervisor');
+                    setRole('supervisor');
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background:
+                      role === 'supervisor'
+                        ? 'var(--primary-container)'
+                        : 'transparent',
+                    color:
+                      role === 'supervisor'
+                        ? 'var(--on-primary)'
+                        : 'var(--on-surface-variant)',
+                  }}
+                >
+                  Supervisor
+                </button>
+              </div>
               <Link to="/queue" className="btn-hero-primary">
                 <span className="material-symbols-outlined">play_arrow</span>
                 Continue reviewing ({totalOpen.toLocaleString()} open tasks)
@@ -208,7 +293,9 @@ export function Dashboard() {
                 {loading ? '…' : totalResolved.toLocaleString()}
               </div>
               <p className="font-label-sm text-secondary mt-1">
-                {metrics?.improvementPercentage ? `${metrics.improvementPercentage} resolved` : 'Committed to clean tables'}
+                {metrics?.improvementPercentage
+                  ? `${metrics.improvementPercentage} resolved`
+                  : 'Committed to clean tables'}
               </p>
             </div>
           </div>
@@ -331,11 +418,15 @@ export function Dashboard() {
           <div className="progress-bar-master">
             <div
               className="bg-primary-container h-full"
-              style={{ width: `${Math.min(100, (totalResolved / Math.max(1, totalDefects)) * 100)}%` }}
+              style={{
+                width: `${Math.min(100, (totalResolved / Math.max(1, totalDefects)) * 100)}%`,
+              }}
             ></div>
             <div
               className="bg-error h-full"
-              style={{ width: `${Math.min(100, (totalOpen / Math.max(1, totalDefects)) * 100)}%` }}
+              style={{
+                width: `${Math.min(100, (totalOpen / Math.max(1, totalDefects)) * 100)}%`,
+              }}
             ></div>
           </div>
 
@@ -408,7 +499,9 @@ export function Dashboard() {
                 disabled={refreshingAudit}
                 title="Refresh audit log"
               >
-                <span className={`material-symbols-outlined text-sm ${refreshingAudit ? 'spin-animation' : ''}`}>
+                <span
+                  className={`material-symbols-outlined text-sm ${refreshingAudit ? 'spin-animation' : ''}`}
+                >
                   refresh
                 </span>
                 <span>{refreshingAudit ? 'Refreshing…' : 'Refresh'}</span>
@@ -420,12 +513,17 @@ export function Dashboard() {
                   const isSupervisor = entry.user_role === 'supervisor';
                   const initials = isSupervisor ? 'DM' : 'SA';
                   const roleLabel = isSupervisor ? 'Supervisor' : 'Data Clerk';
-                  const actorName = entry.actor || (isSupervisor ? 'Dr. Mwangi' : 'Sarah Achieng');
-                  const dateStr = new Date(entry.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  });
+                  const actorName =
+                    entry.actor ||
+                    (isSupervisor ? 'Dr. Mwangi' : 'Sarah Achieng');
+                  const dateStr = new Date(entry.timestamp).toLocaleTimeString(
+                    [],
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    },
+                  );
                   const isSms = (entry.channel || '').toLowerCase() === 'sms';
 
                   return (
@@ -439,9 +537,15 @@ export function Dashboard() {
                       text={
                         <>
                           {isSms ? (
-                            <>Decision received on Task #{entry.task_id} via SMS webhook integration.</>
+                            <>
+                              Decision received on Task #{entry.task_id} via SMS
+                              webhook integration.
+                            </>
                           ) : (
-                            <>Recorded decision on Task #{entry.task_id} from Clinical Workbench.</>
+                            <>
+                              Recorded decision on Task #{entry.task_id} from
+                              Clinical Workbench.
+                            </>
                           )}
                         </>
                       }
@@ -450,10 +554,12 @@ export function Dashboard() {
                         entry.action === 'accept'
                           ? 'bg-secondary-container text-on-secondary-fixed'
                           : entry.action === 'reject'
-                          ? 'bg-error-container text-on-error-container'
-                          : 'bg-surface-container-high text-on-surface'
+                            ? 'bg-error-container text-on-error-container'
+                            : 'bg-surface-container-high text-on-surface'
                       }
-                      extra={entry.ip_address ? `IP: ${entry.ip_address}` : undefined}
+                      extra={
+                        entry.ip_address ? `IP: ${entry.ip_address}` : undefined
+                      }
                     />
                   );
                 })
@@ -484,7 +590,8 @@ export function Dashboard() {
                     text={
                       <>
                         Approved cold chain inspection for dispatch{' '}
-                        <span className="mono-tag">TRF-001048</span> via SMS reply.
+                        <span className="mono-tag">TRF-001048</span> via SMS
+                        reply.
                       </>
                     }
                     tag="Transfer Confirmed"
@@ -501,7 +608,8 @@ export function Dashboard() {
                       <>
                         Approved duplicate donor merge for{' '}
                         <span className="mono-tag">DNR-010412</span> &amp;{' '}
-                        <span className="mono-tag">DNR-031877</span> (AI Match 98%).
+                        <span className="mono-tag">DNR-031877</span> (AI Match
+                        98%).
                       </>
                     }
                     tag="Supervisor Merged"
@@ -676,12 +784,18 @@ function ActivityItem({
         className="activity-avatar"
         style={
           isSms
-            ? { backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }
+            ? {
+                backgroundColor: '#fef3c7',
+                color: '#92400e',
+                border: '1px solid #fde68a',
+              }
             : undefined
         }
       >
         {isSms ? (
-          <span className="material-symbols-outlined text-base">phone_android</span>
+          <span className="material-symbols-outlined text-base">
+            phone_android
+          </span>
         ) : (
           initials
         )}
@@ -696,14 +810,18 @@ function ActivityItem({
 
             {isSms && (
               <span className="channel-badge channel-sms">
-                <span className="material-symbols-outlined text-xs">phone_android</span>
+                <span className="material-symbols-outlined text-xs">
+                  phone_android
+                </span>
                 Via SMS
               </span>
             )}
 
             {isWeb && (
               <span className="channel-badge channel-web">
-                <span className="material-symbols-outlined text-xs">laptop</span>
+                <span className="material-symbols-outlined text-xs">
+                  laptop
+                </span>
                 Via Web
               </span>
             )}
