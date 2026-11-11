@@ -6,6 +6,8 @@ import {
   submitDecisionWithOfflineSync,
   TASK_TYPE_LABELS,
   TASK_TYPE_ICONS,
+  formatRecordId,
+  formatFriendlyReason,
   type TaskRecord,
 } from '../api';
 import { useAuth } from '../providers';
@@ -172,7 +174,7 @@ export function TaskDetail() {
           <h3 className="font-label-md text-on-surface mb-1">
             Why this was flagged
           </h3>
-          <p className="font-body-md text-on-surface-variant">{task.reason}</p>
+          <p className="font-body-md text-on-surface-variant">{formatFriendlyReason(task.reason, task.type)}</p>
         </div>
       </div>
 
@@ -182,25 +184,25 @@ export function TaskDetail() {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">psychology</span>
-              <h3 className="font-label-lg text-on-surface">AI Fuzzy Matching Analysis</h3>
+              <h3 className="font-label-lg text-on-surface">AI Matching Check</h3>
             </div>
             <span className="ai-match-chip font-bold">
-              Similarity Score: {similarityScorePct}
+              Match confidence: {similarityScorePct}
             </span>
           </div>
           <p className="text-xs text-secondary">
-            Composite score derived from Levenshtein edit distance on county, day/month birth date proximity, and phone matching:
+            Our AI compared county names, dates of birth, and phone numbers:
           </p>
           <div className="ai-chips-list">
             {matchedFields.map((f) => (
               <span key={f} className="ai-match-chip">
                 <span className="material-symbols-outlined text-xs">check</span>
                 {f === 'phone_last4'
-                  ? 'Same Phone (Last 4 digits)'
+                  ? 'Same phone ending'
                   : f === 'birth_date'
-                  ? 'Matching Birth Date Proximity'
+                  ? 'Same date of birth'
                   : f === 'home_county'
-                  ? 'Matching County (Fuzzy)'
+                  ? 'Same home county'
                   : f}
               </span>
             ))}
@@ -213,29 +215,29 @@ export function TaskDetail() {
         <div className="record-card">
           <div className="record-header">
             <h3 className="font-label-md">Record A</h3>
-            <span className="mono-tag">{task.recordIds[0]}</span>
+            <span className="mono-tag">{formatRecordId(task.recordIds[0])}</span>
           </div>
           <div className="record-body">
             {isDuplicateDonor ? (
               <>
                 <div className="field-row">
-                  <span className="field-label">Donor Identifier</span>
-                  <span className="field-value font-bold">{task.recordIds[0]}</span>
+                  <span className="field-label">Donor ID</span>
+                  <span className="field-value font-bold">{formatRecordId(task.recordIds[0])}</span>
                 </div>
                 <div className="field-row">
                   <span className="field-label">Target Merge Action</span>
                   <span className="field-value text-primary font-semibold">Primary Profile (Retain)</span>
                 </div>
                 <div className="field-row">
-                  <span className="field-label">Phone Last 4</span>
+                  <span className="field-label">Phone ending</span>
                   <span className="field-value font-mono">{(suggestion as any)?.phone_last4 || (piiRevealed ? '****412' : 'XXXX')}</span>
                 </div>
                 <div className="field-row">
-                  <span className="field-label">Birth Date</span>
+                  <span className="field-label">Date of birth</span>
                   <span className="field-value">{piiRevealed ? ((suggestion as any)?.birth_date || '1992-05-14') : '1992-XX-XX'}</span>
                 </div>
                 <div className="field-row">
-                  <span className="field-label">Home County</span>
+                  <span className="field-label">Home county</span>
                   <span className="field-value font-medium">{(suggestion as any)?.home_county || 'Nairobi'}</span>
                 </div>
               </>
@@ -261,7 +263,7 @@ export function TaskDetail() {
             <div className="field-row">
               <span className="field-label">Detected by</span>
               <span className="field-value">
-                {task.source === 'smart' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
+                {task.source === 'smart' ? 'AI Matching' : 'Safety Rule'}
               </span>
             </div>
             <div className="field-row">
@@ -277,42 +279,42 @@ export function TaskDetail() {
           <div className="record-card">
             <div className="record-header">
               <h3 className="font-label-md">Record B</h3>
-              <span className="mono-tag">{task.recordIds[1]}</span>
+              <span className="mono-tag">{formatRecordId(task.recordIds[1])}</span>
             </div>
             <div className="record-body">
               {isDuplicateDonor ? (
                 <>
                   <div className="field-row">
-                    <span className="field-label">Donor Identifier</span>
-                    <span className="field-value font-bold">{task.recordIds[1]}</span>
+                    <span className="field-label">Donor ID</span>
+                    <span className="field-value font-bold">{formatRecordId(task.recordIds[1])}</span>
                   </div>
                   <div className="field-row">
                     <span className="field-label">Proposed Merge Action</span>
                     <span className="field-value text-error font-semibold">Secondary Profile (Merge In)</span>
                   </div>
                   <div className="field-row">
-                    <span className="field-label">Phone Last 4</span>
+                    <span className="field-label">Phone ending</span>
                     <span className="field-value font-mono">{(suggestion as any)?.phone_last4 || (piiRevealed ? '****412' : 'XXXX')}</span>
                   </div>
                   <div className="field-row">
-                    <span className="field-label">Birth Date</span>
+                    <span className="field-label">Date of birth</span>
                     <span className="field-value">{piiRevealed ? ((suggestion as any)?.birth_date_b || '1992-05-18') : '1992-XX-XX'}</span>
                   </div>
                   <div className="field-row">
-                    <span className="field-label">Home County</span>
+                    <span className="field-label">Home county</span>
                     <span className="field-value font-medium">{(suggestion as any)?.home_county_b || 'Nairobi'}</span>
                   </div>
                   <div className="field-row">
                     <span className="field-label">Matching Confidence</span>
                     <span className="field-value">
-                      {similarityScorePct ?? (task.confidence === 'rule' ? 'Rule-based flag' : task.confidence)}
+                      {similarityScorePct ?? (task.confidence === 'rule' ? 'Rule-based check' : task.confidence)}
                     </span>
                   </div>
                 </>
               ) : (
                 <div className="field-row">
-                  <span className="field-label">Coupled Reference</span>
-                  <span className="field-value font-mono">{task.recordIds[1]}</span>
+                  <span className="field-label">Linked Record</span>
+                  <span className="field-value font-mono">{formatRecordId(task.recordIds[1])}</span>
                 </div>
               )}
             </div>
@@ -322,13 +324,13 @@ export function TaskDetail() {
         {(task.type === 'implausible' || task.type === 'facility_name') && (
           <div className="record-card">
             <div className="record-header">
-              <h3 className="font-label-md">Canonical Registry Resolution</h3>
-              <span className="mono-tag text-success">DHIS2 Target</span>
+              <h3 className="font-label-md">Official Hospital Registry</h3>
+              <span className="mono-tag text-success">National List</span>
             </div>
             <div className="record-body">
               <div className="field-row">
-                <span className="field-label">Reference ID</span>
-                <span className="field-value">{task.recordIds[1]}</span>
+                <span className="field-label">Official Hospital ID</span>
+                <span className="field-value">{formatRecordId(task.recordIds[1])}</span>
               </div>
             </div>
           </div>

@@ -234,8 +234,8 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
               <strong className="text-on-surface">
                 Works offline after first sign-in:
               </strong>{' '}
-              Your records, scans, and discrepancy reviews sync automatically
-              whenever central connectivity returns.
+              Your records, scans, and safety reviews sync automatically
+              whenever connection returns.
             </p>
           </div>
         </form>

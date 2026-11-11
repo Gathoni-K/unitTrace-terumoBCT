@@ -27,8 +27,7 @@ export function MethodResults() {
             Smart Matching (AI)
           </h3>
           <p className="text-sm text-secondary">
-            Uses fuzzy logic (Levenshtein distance, date proximity) to find true
-            duplicates.
+            Uses smart matching (name spelling, date of birth) to find true duplicates.
           </p>
         </div>
         <button
