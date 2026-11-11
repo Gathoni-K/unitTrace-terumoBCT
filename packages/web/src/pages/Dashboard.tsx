@@ -95,13 +95,13 @@ export function Dashboard() {
             shield
           </span>
           <span className="font-label-sm">
-            <strong>Demo Mode:</strong> You are viewing fake test data. Your real hospital data is safe and untouched.
+            <strong>Practice Mode:</strong> You are using sample hospital records. Your real patient data is safe and untouched.
           </span>
         </div>
         <div className="flex gap-4 text-xs opacity-80">
-          <span>Batch #KE-2025-084</span>
+          <span>Sample Records (Kenya)</span>
           <span>•</span>
-          <span>NBO Zone Node 04</span>
+          <span>Nairobi Blood Centre</span>
         </div>
       </div>
 
