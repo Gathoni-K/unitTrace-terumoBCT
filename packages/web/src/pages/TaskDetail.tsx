@@ -3,7 +3,6 @@
    ========================================================================== */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../providers';
 import {
   getTask,
   revealTaskPii,
@@ -12,17 +11,22 @@ import {
   TASK_TYPE_ICONS,
   type TaskRecord,
 } from '../api';
-
+import { useAuth } from '../providers';
 import './TaskDetail.css';
+import { useToast } from '../components/Toast';
 
 export function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { role } = useAuth();
 
-  const currentRole: 'clerk' | 'supervisor' = role === 'supervisor' ? 'supervisor' : 'clerk';
-  const userName = currentRole === 'supervisor' ? 'Dr. Mwangi (Supervisor)' : 'Sarah Achieng (Data Clerk)';
-  const userId = currentRole === 'supervisor' ? 'supervisor-mwangi' : 'clerk-sarah';
+  const currentRole: 'clerk' | 'supervisor' =
+    role === 'supervisor' ? 'supervisor' : 'clerk';
+  const userName =
+    currentRole === 'supervisor'
+      ? 'Dr. Mwangi (Supervisor)'
+      : 'Sarah Achieng (Data Clerk)';
 
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +56,10 @@ export function TaskDetail() {
       const unmaskedTask = await revealTaskPii(id, userId);
       setTask(unmaskedTask);
       setPiiRevealed(true);
+      showToast(
+        'warning',
+        '⚠️ PII Revealed. This action has been logged to the audit trail.',
+      );
     } catch (err) {
       setErrorMsg(`Failed to reveal PII: ${(err as Error).message}`);
     } finally {
@@ -66,7 +74,6 @@ export function TaskDetail() {
     try {
       const res = await submitDecisionWithOfflineSync(id, {
         action,
-        user_id: userId,
         actor: userName,
         user_role: currentRole,
         channel: 'web',
@@ -74,6 +81,12 @@ export function TaskDetail() {
       });
       setIsQueuedOffline(res.status === 'queued');
       setDecisionMade(action);
+      showToast(
+        'success',
+        res.status === 'queued'
+          ? `Decision queued offline. Will sync when connection returns.`
+          : `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
+      );
     } catch (err) {
       setErrorMsg((err as Error).message);
     } finally {
@@ -81,29 +94,24 @@ export function TaskDetail() {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="task-detail-container">
         <p>Loading task…</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="task-detail-container">
         <p className="text-error">Error: {error}</p>
       </div>
     );
-  }
-
-  if (!task) {
+  if (!task)
     return (
       <div className="task-detail-container">
         <p>Task not found.</p>
       </div>
     );
-  }
 
   const isDecisionMade = decisionMade !== null;
   const suggestion = task.suggestion as Record<string, unknown> | undefined;
@@ -133,59 +141,28 @@ export function TaskDetail() {
 
   return (
     <div className="task-detail-container">
-      <button type="button" className="btn-back" onClick={() => navigate('/queue')}>
+      <button className="btn-back" onClick={() => navigate('/queue')}>
         <span className="material-symbols-outlined">arrow_back</span>
         Back to queue
       </button>
 
       <div className="task-header">
         <div>
-          <div className="flex items-center gap-3">
-            <span className="mono-tag">#{task.id}</span>
-            <span className="reviewer-pill">
-              <span className="material-symbols-outlined text-sm">badge</span>
-              Reviewer: <strong>{userName}</strong>
-            </span>
-          </div>
+          <span className="mono-tag">#{task.id}</span>
           <h1 className="font-headline-lg text-on-surface mt-2">
             {TASK_TYPE_LABELS[task.type] ?? task.type}
           </h1>
         </div>
-
-        <div className={`confidence-badge confidence-${task.confidence} text-sm px-4 py-2`}>
+        <div
+          className={`confidence-badge confidence-${task.confidence} text-sm px-4 py-2`}
+        >
           <span className="material-symbols-outlined text-base">verified</span>
-          {task.confidence === 'rule' ? 'Rule-based flag' : `Confidence: ${task.confidence}`}
+          {task.confidence === 'rule'
+            ? 'Rule-based flag'
+            : `Confidence: ${task.confidence}`}
         </div>
       </div>
 
-      {/* PII Masking & Reveal Notice */}
-      {piiRevealed ? (
-        <div className="pii-revealed-banner">
-          <span className="material-symbols-outlined text-warning">warning</span>
-          <span>⚠️ PII Revealed. Access has been logged to the immutable audit trail.</span>
-        </div>
-      ) : (
-        <div className="pii-masked-container">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary text-sm">shield</span>
-            <span className="text-xs text-secondary font-medium">
-              Personal Data Masked (YYYY-XX-XX, XXXX) under Kenya Data Protection Act 2019.
-            </span>
-          </div>
-          <button
-            type="button"
-            className="btn-reveal-pii"
-            onClick={handleRevealPii}
-            disabled={revealingPii}
-            title="Break-glass audited unmasking"
-          >
-            <span className="material-symbols-outlined text-sm">visibility</span>
-            {revealingPii ? 'Unmasking…' : 'Reveal PII'}
-          </button>
-        </div>
-      )}
-
-      {/* Reason Box */}
       <div className="reason-box">
         <span className="material-symbols-outlined text-primary text-2xl shrink-0">
           info
@@ -276,22 +253,14 @@ export function TaskDetail() {
               <div className="field-row">
                 <span className="field-label">Observed Value</span>
                 <span className="field-value text-error font-bold">
-                  {String(suggestion.observedValue)}
-                </span>
-              </div>
-            ) : (
-              <div className="field-row">
-                <span className="field-label">Defect Type</span>
-                <span className="field-value text-error font-semibold">
-                  {TASK_TYPE_LABELS[task.type] ?? task.type}
+                  {String(observedValue)}
                 </span>
               </div>
             )}
-
             <div className="field-row">
               <span className="field-label">Detected by</span>
               <span className="field-value">
-                {task.source === 'smart' || task.source === 'ai' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
+                {task.source === 'smart' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
               </span>
             </div>
             <div className="field-row">
@@ -306,7 +275,7 @@ export function TaskDetail() {
         {task.recordIds.length > 1 && (
           <div className="record-card">
             <div className="record-header">
-              <h3 className="font-label-md">Record B (Comparison)</h3>
+              <h3 className="font-label-md">Record B</h3>
               <span className="mono-tag">{task.recordIds[1]}</span>
             </div>
             <div className="record-body">
@@ -357,85 +326,46 @@ export function TaskDetail() {
             </div>
             <div className="record-body">
               <div className="field-row">
-                <span className="field-label">Suggested Canonical Name</span>
-                <span className="field-value text-success font-bold">
-                  {facilityCanonicalName || 'Canonical Facility Registry Match'}
-                </span>
-              </div>
-              <div className="field-row">
-                <span className="field-label">DHIS2 Aggregation</span>
-                <span className="field-value">Fix restores national reporting visibility</span>
+                <span className="field-label">Reference ID</span>
+                <span className="field-value">{task.recordIds[1]}</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Lock notice */}
       <div className="lock-notice">
         <span className="material-symbols-outlined text-error">lock</span>
         <div>
-          <strong className="text-on-surface">Clinical Safety & Audit Safeguard.</strong>
+          <strong className="text-on-surface">Sensitive field locked.</strong>
           <p className="text-sm text-on-surface-variant">
-            Zero automated merges are permitted. Every modification is attributed to the current authenticated reviewer with client IP and role verification in the national audit trail.
+            Any changes to blood group or lab results require a qualified
+            person. This cannot be changed by SMS or automatically.
           </p>
         </div>
       </div>
 
-      {/* Action Area */}
       {isDecisionMade ? (
-        <div
-          className={`success-box ${
-            isQueuedOffline ? 'bg-amber-50 border-amber-300 text-amber-900' : ''
-          }`}
-          style={
-            isQueuedOffline
-              ? { backgroundColor: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }
-              : undefined
-          }
-        >
-          <span
-            className={`material-symbols-outlined text-3xl ${
-              isQueuedOffline ? 'text-amber-700' : 'text-success'
-            }`}
-          >
-            {isQueuedOffline ? 'cloud_off' : 'check_circle'}
+        <div className="success-box">
+          <span className="material-symbols-outlined text-success text-3xl">
+            check_circle
           </span>
           <div>
-            <h3
-              className={`font-headline-sm ${
-                isQueuedOffline ? 'text-amber-900' : 'text-success'
-              }`}
-            >
-              Decision Recorded: {decisionMade.toUpperCase()}
+            <h3 className="font-headline-sm text-success">
+              Decision recorded: {decisionMade?.toUpperCase()}
             </h3>
-            <p className="text-sm mt-1">
+            <p className="text-sm text-on-surface-variant mt-1">
               {isQueuedOffline
-                ? '⚠️ Offline: Decision queued locally. Will sync when connection returns.'
-                : `The decision was successfully verified and committed to the audit trail by ${userName} (${currentRole.toUpperCase()}).`}
+                ? 'Queued offline. Will sync when connection returns.'
+                : 'The change has been logged in the audit trail. If this requires supervisor approval, it will now appear in their queue.'}
             </p>
           </div>
         </div>
       ) : (
         <div className="action-area">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-label-lg text-on-surface">
-              Submit Review Decision
-            </h3>
-            <span className="text-xs text-secondary">
-              Acting as: <strong>{userName}</strong>
-            </span>
-          </div>
-
-          {isDuplicateDonor && currentRole === 'clerk' && (
-            <div className="role-restriction-notice">
-              <span className="material-symbols-outlined text-base">gpp_maybe</span>
-              <span>
-                <strong>Clinical RBAC Safeguard:</strong> Merging duplicate donor identities is restricted to <strong>Supervisors</strong>. As a Data Clerk, submitting a merge decision will be blocked.
-              </span>
-            </div>
-          )}
-
+          <h3 className="font-label-lg text-on-surface mb-2">
+            What would you like to do?
+          </h3>
           <div className="form-group mb-4">
             <label htmlFor="decision-audit-note" className="font-label-sm text-secondary block mb-1">
               Audit Note (Required for Reject, recommended for Accept/Change)
@@ -443,7 +373,7 @@ export function TaskDetail() {
             <textarea
               id="decision-audit-note"
               className="note-input"
-              placeholder="Provide clinical rationale for the immutable audit log…"
+              placeholder="Add context for the audit trail..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
@@ -458,13 +388,12 @@ export function TaskDetail() {
 
           <div className="action-buttons">
             <button
-            type="button"
               className="btn-accept"
               onClick={() => handleDecision('accept')}
               disabled={actionLoading}
             >
               <span className="material-symbols-outlined">check</span>
-              Accept & Fix
+              Accept
             </button>
             <button
             type="button"
@@ -473,7 +402,7 @@ export function TaskDetail() {
               disabled={actionLoading}
             >
               <span className="material-symbols-outlined">edit</span>
-              Change Suggestion
+              Change
             </button>
             <button
             type="button"
@@ -482,11 +411,12 @@ export function TaskDetail() {
               disabled={actionLoading || !note.trim()}
             >
               <span className="material-symbols-outlined">close</span>
-              Reject Flag
+              Reject
             </button>
           </div>
           <p className="text-xs text-secondary text-center mt-3">
-            Nothing is auto-corrected. Human-in-the-loop validation is enforced on every defect.
+            Nothing is auto-corrected. A human decision is required for every
+            change.
           </p>
         </div>
       )}

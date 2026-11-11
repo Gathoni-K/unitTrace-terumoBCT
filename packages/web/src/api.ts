@@ -1,6 +1,6 @@
 /* ==========================================================================
    packages/web/src/api.ts
-   Real API client — talks to Gathoni's live backend
+   Real API client — talks to live backend
    ========================================================================== */
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
@@ -41,7 +41,9 @@ export async function listTasks(
   if (params.limit) query.set('limit', String(params.limit));
   if (params.offset) query.set('offset', String(params.offset));
 
-  const res = await fetch(`${API_BASE}/api/tasks?${query.toString()}`);
+  const res = await fetch(`${API_BASE}/api/tasks?${query.toString()}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to list tasks: ${res.status}`);
   return res.json();
 }
@@ -92,7 +94,9 @@ export interface BeforeAfterReport {
 }
 
 export async function getMetrics(): Promise<BeforeAfterReport> {
-  const res = await fetch(`${API_BASE}/api/metrics/before-after`);
+  const res = await fetch(`${API_BASE}/api/metrics/before-after`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to fetch metrics: ${res.status}`);
   return res.json();
 }
@@ -110,7 +114,9 @@ export interface AuditLogItem {
 }
 
 export async function getAuditLogs(limit = 20): Promise<AuditLogItem[]> {
-  const res = await fetch(`${API_BASE}/api/audit?limit=${limit}`);
+  const res = await fetch(`${API_BASE}/api/audit?limit=${limit}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to fetch audit logs: ${res.status}`);
   return res.json();
 }
@@ -168,7 +174,9 @@ export function getDb(): Promise<IDBPDatabase<UnitTraceDB>> {
 }
 
 export async function getTask(id: string): Promise<TaskRecord> {
-  const res = await fetch(`${API_BASE}/api/tasks/${id}`);
+  const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to get task: ${res.status}`);
   return res.json();
 }
@@ -190,7 +198,10 @@ export async function revealTaskPii(id: string, userId?: string): Promise<TaskRe
   return res.json();
 }
 
-export async function submitDecision(id: string, payload: DecisionPayload): Promise<{ ok: boolean; task?: TaskRecord }> {
+export async function submitDecision(
+  id: string,
+  payload: DecisionPayload,
+): Promise<{ ok: boolean; task?: TaskRecord }> {
   const role = payload.user_role ?? 'clerk';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -205,6 +216,14 @@ export async function submitDecision(id: string, payload: DecisionPayload): Prom
     headers,
     body: JSON.stringify(payload),
   });
+
+  if (res.status === 403) {
+    const err = new Error(
+      'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+    );
+    (err as any).status = 403;
+    throw err;
+  }
 
   if (!res.ok) {
     let errMessage = `Failed to submit decision: ${res.status}`;
@@ -245,7 +264,11 @@ export async function submitDecisionWithOfflineSync(
 
   try {
     const res = await submitDecision(id, payload);
-    return { ok: res.ok, status: (res.task?.status as string) || 'done', task: res.task };
+    return {
+      ok: res.ok,
+      status: (res.task?.status as string) || 'done',
+      task: res.task,
+    };
   } catch (err) {
     // If a network connection error happens, queue to IndexedDB as well
     const isNetworkError =

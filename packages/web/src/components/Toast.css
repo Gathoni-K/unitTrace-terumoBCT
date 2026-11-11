@@ -1,0 +1,68 @@
+/* ==========================================================================
+   packages/web/src/components/Toast.css
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(15, 23, 42, 0.2));
+  color: #fff;
+  font-size: 14px;
+  animation: slideIn 0.3s ease-out;
+  border-left: 4px solid rgba(255, 255, 255, 0.5);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-success {
+  background: #15803d;
+}
+.toast-error {
+  background: #be123c;
+}
+.toast-warning {
+  background: #b45309;
+}
+.toast-info {
+  background: #0369a1;
+}
+
+.toast-message {
+  flex: 1;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+}
+.toast-close:hover {
+  color: #fff;
+}
