@@ -202,3 +202,36 @@
     grid-template-columns: 1fr;
   }
 }
+
+.btn-reveal-pii {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--surface-container);
+  border-radius: var(--border-radius-lg);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+.btn-reveal-pii:hover {
+  background: var(--surface-container);
+  border-color: var(--primary);
+}
+
+.pii-revealed-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #fef3c7;
+  color: #b45309;
+  border-radius: var(--border-radius-lg);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}

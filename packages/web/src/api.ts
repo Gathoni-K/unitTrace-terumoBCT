@@ -5,6 +5,13 @@
 
 const API_BASE = 'https://unittrace-terumobct.onrender.com';
 
+function getHeaders(): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    'x-user-role': localStorage.getItem('userRole') || 'clerk',
+  };
+}
+
 export interface TaskRecord {
   id: string;
   type: string;
@@ -39,7 +46,9 @@ export async function listTasks(
   if (params.limit) query.set('limit', String(params.limit));
   if (params.offset) query.set('offset', String(params.offset));
 
-  const res = await fetch(`${API_BASE}/api/tasks?${query.toString()}`);
+  const res = await fetch(`${API_BASE}/api/tasks?${query.toString()}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to list tasks: ${res.status}`);
   return res.json();
 }
@@ -81,23 +90,76 @@ export interface DecisionPayload {
 }
 
 export async function getTask(id: string): Promise<TaskRecord> {
-  const res = await fetch(`${API_BASE}/api/tasks/${id}`);
+  const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to get task: ${res.status}`);
   return res.json();
 }
 
-export async function revealTaskPii(id: string): Promise<Record<string, unknown>> {
-  const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`);
+export async function revealTaskPii(
+  id: string,
+): Promise<Record<string, unknown>> {
+  const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to reveal PII: ${res.status}`);
   return res.json();
 }
 
-export async function submitDecision(id: string, payload: DecisionPayload): Promise<{ ok: boolean; task?: TaskRecord }> {
+export async function submitDecision(
+  id: string,
+  payload: DecisionPayload,
+): Promise<{ ok: boolean; task?: TaskRecord }> {
   const res = await fetch(`${API_BASE}/api/tasks/${id}/decision`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify(payload),
   });
+
+  if (res.status === 403) {
+    const err = new Error(
+      'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+    );
+    (err as any).status = 403;
+    throw err;
+  }
   if (!res.ok) throw new Error(`Failed to submit decision: ${res.status}`);
+  return res.json();
+}
+
+export async function getAuditEntries(): Promise<{
+  entries: Array<Record<string, unknown>>;
+}> {
+  try {
+    const res = await fetch(`${API_BASE}/api/audit`, { headers: getHeaders() });
+    if (!res.ok) return { entries: [] };
+    return res.json();
+  } catch {
+    return { entries: [] };
+  }
+}
+
+export interface MetricsResponse {
+  headlineMetric: string;
+  beforeValue: number;
+  afterValue: number;
+  resolvedCount: number;
+  improvementPercentage: string;
+  summaryText: string;
+  taskBreakdown: Array<{
+    type: string;
+    beforeOpen: number;
+    afterResolved: number;
+    improvementPercentage: string;
+  }>;
+}
+
+export async function getMetrics(): Promise<MetricsResponse> {
+  const res = await fetch(`${API_BASE}/api/metrics/before-after`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to get metrics: ${res.status}`);
   return res.json();
 }

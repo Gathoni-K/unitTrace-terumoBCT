@@ -15,6 +15,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.setItem('userRole', role);
     setRole(role);
     onSignIn();
   };

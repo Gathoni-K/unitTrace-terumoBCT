@@ -6,22 +6,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   getTask,
   submitDecision,
+  revealTaskPii,
   TASK_TYPE_LABELS,
   TASK_TYPE_ICONS,
   type TaskRecord,
 } from '../api';
 import './TaskDetail.css';
+import { useToast } from '../components/Toast';
 
 export function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
+  const { showToast } = useToast();
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionMade, setDecisionMade] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [piiRevealed, setPiiRevealed] = useState(false);
+  const [piiData, setPiiData] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -40,15 +44,44 @@ export function TaskDetail() {
         action,
         user_id: 'clerk-sarah',
         actor: 'Sarah Achieng',
-        user_role: 'clerk',
+        user_role:
+          (localStorage.getItem('userRole') as 'clerk' | 'supervisor') ||
+          'clerk',
         channel: 'web',
         note: note || undefined,
       });
       setDecisionMade(action);
+      showToast(
+        'success',
+        `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
+      );
     } catch (err) {
-      alert(`Failed to submit decision: ${(err as Error).message}`);
+      const e = err as Error & { status?: number };
+      if (e.status === 403) {
+        showToast(
+          'error',
+          'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+        );
+      } else {
+        showToast('error', e.message || 'Failed to submit decision.');
+      }
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleRevealPii = async () => {
+    if (!id) return;
+    try {
+      const data = await revealTaskPii(id);
+      setPiiData(data);
+      setPiiRevealed(true);
+      showToast(
+        'warning',
+        '⚠️ PII Revealed. This action has been logged to the audit trail.',
+      );
+    } catch (err) {
+      showToast('error', `Failed to reveal PII: ${(err as Error).message}`);
     }
   };
 
@@ -150,10 +183,22 @@ export function TaskDetail() {
         {task.recordIds.length > 1 && (
           <div className="record-card">
             <div className="record-header">
-              <h3 className="font-label-md">Record B</h3>
-              <span className="mono-tag">{task.recordIds[1]}</span>
+              <h3 className="font-label-md">Record A</h3>
+              <span className="mono-tag">{task.recordIds[0]}</span>
             </div>
             <div className="record-body">
+              {!piiRevealed && (
+                <button className="btn-reveal-pii" onClick={handleRevealPii}>
+                  <span className="material-symbols-outlined">visibility</span>
+                  Reveal PII
+                </button>
+              )}
+              {piiRevealed && piiData && (
+                <div className="pii-revealed-banner">
+                  <span className="material-symbols-outlined">warning</span>
+                  <span>PII Revealed — action logged to audit trail</span>
+                </div>
+              )}
               <p className="text-sm text-secondary">
                 Coupled record for review.
               </p>

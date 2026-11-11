@@ -4,8 +4,34 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Dashboard.css';
+import { AuditPanel } from '../components/AuditPanel';
+import { useState } from 'react';
+import { useEffect } from 'react';
+import { getMetrics, type MetricsResponse } from '../api';
 
 export function Dashboard() {
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+
+  useEffect(() => {
+    getMetrics()
+      .then(setMetrics)
+      .catch(() => setMetrics(null))
+      .finally(() => setMetricsLoading(false));
+  }, []);
+
+  const getCount = (type: string): number => {
+    const item = metrics?.taskBreakdown.find((t) => t.type === type);
+    return item?.beforeOpen ?? 0;
+  };
+
+  const totalOpen =
+    metrics?.taskBreakdown.reduce((sum, t) => sum + t.beforeOpen, 0) ?? 0;
+  const duplicateCount = getCount('duplicate_donor');
+  const unresolvedCount = metrics?.beforeValue ?? 0;
+  const resolvedCount = metrics?.resolvedCount ?? 0;
+
   return (
     <div className="dashboard-container">
       {/* Safeguard Ribbon */}
@@ -68,7 +94,7 @@ export function Dashboard() {
             <div className="hero-actions">
               <Link to="/queue" className="btn-hero-primary">
                 <span className="material-symbols-outlined">play_arrow</span>
-                Continue reviewing (24 open tasks)
+                Continue reviewing ({totalOpen.toLocaleString()} open tasks)
               </Link>
               <button className="btn-hero-secondary">
                 <span className="material-symbols-outlined">upload_file</span>
@@ -83,16 +109,18 @@ export function Dashboard() {
           <div className="metric-card">
             <div className="metric-header">
               <span className="font-label-md text-secondary">
-                Total records checked
+                Total tasks detected
               </span>
               <div className="metric-icon">
                 <span className="material-symbols-outlined">database</span>
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-on-surface">14,820</div>
+              <div className="font-headline-xl text-on-surface">
+                {metricsLoading ? '—' : totalOpen.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
-                Across 4 counties this month
+                Across 8 rule-sets
               </p>
             </div>
           </div>
@@ -101,7 +129,7 @@ export function Dashboard() {
             <div className="metric-header">
               <div className="flex items-center gap-1.5">
                 <span className="font-label-md text-on-surface font-semibold">
-                  Records needing review
+                  Unconfirmed transfers
                 </span>
                 <span className="status-dot"></span>
               </div>
@@ -114,14 +142,14 @@ export function Dashboard() {
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="font-headline-xl text-error font-bold">
-                  24
+                  {metricsLoading ? '—' : unresolvedCount.toLocaleString()}
                 </span>
                 <span className="text-xs font-label-sm text-secondary">
                   action needed
                 </span>
               </div>
               <p className="font-label-sm text-on-surface-variant font-medium mt-1">
-                18 high confidence suggestions
+                {duplicateCount.toLocaleString()} duplicate donors also flagged
               </p>
             </div>
           </div>
@@ -129,16 +157,18 @@ export function Dashboard() {
           <div className="metric-card">
             <div className="metric-header">
               <span className="font-label-md text-secondary">
-                Records reviewed
+                Decisions resolved
               </span>
               <div className="metric-icon">
                 <span className="material-symbols-outlined">task_alt</span>
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-on-surface">312</div>
+              <div className="font-headline-xl text-on-surface">
+                {metricsLoading ? '—' : resolvedCount.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
-                Reviewed by you & team this week
+                {metrics?.improvementPercentage ?? '0.0%'} improvement
               </p>
             </div>
           </div>
@@ -146,16 +176,19 @@ export function Dashboard() {
           <div className="metric-card">
             <div className="metric-header">
               <span className="font-label-md text-secondary">
-                Waiting for approval
+                Duplicate donors
               </span>
               <div className="metric-icon">
                 <span className="material-symbols-outlined">fact_check</span>
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-primary">6</div>
+              <div className="font-headline-xl text-primary">
+                {metricsLoading ? '—' : duplicateCount.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
-                Sent to supervisor Dr. Mwangi
+                AI-flagged with {getCount('sensor_glitch').toLocaleString()}{' '}
+                sensor glitches
               </p>
             </div>
           </div>
@@ -174,60 +207,60 @@ export function Dashboard() {
               </p>
             </div>
             <span className="font-label-sm text-secondary bg-surface-container-high px-3 py-1 rounded-full">
-              8 Rule-Sets Run · 24 Total Open
+              8 Rule-Sets Run · {totalOpen.toLocaleString()} Total Open
             </span>
           </div>
 
           <div className="problems-grid">
             <ProblemCard
               icon="people"
-              badge="8 records"
+              badge={`${getCount('duplicate_donor')} donors`}
               badgeClass="bg-error-container text-on-error-container"
               title="Possible duplicate donors"
               desc="Two records may belong to the same person with minor typos or alternate ID numbers."
             />
             <ProblemCard
               icon="domain_disabled"
-              badge="5 records"
+              badge={`${getCount('facility_name')} records`}
               title="Facility names that do not match"
               desc='Non-standard names like "NATL REFERRAL" vs Master Health Facility List register.'
             />
             <ProblemCard
               icon="bloodtype"
-              badge="4 records"
+              badge={`${getCount('missing_donor_blood_group')} records`}
               title="Missing blood group info"
               desc="Donor logged without confirmed ABO/Rh typing entered prior to bag barcode issuance."
             />
             <ProblemCard
               icon="emergency"
-              badge="2 urgent"
+              badge={`${getCount('unknown_patient_blood_group')} urgent`}
               badgeClass="bg-error-container text-on-error-container"
               title="Unknown patient blood group"
               desc="Emergency requisition received with recipient blood group omitted in hospital ward order."
             />
             <ProblemCard
               icon="device_thermostat"
-              badge="2 sensors"
+              badge={`${getCount('sensor_glitch')} sensors`}
               title="Unusual temperature readings"
               desc="Sensor data anomaly detected: impossible fridge log value recorded (-99°C)."
             />
             <ProblemCard
               icon="cloud_off"
-              badge="1 record"
+              badge={`${getCount('logger_gap')} gaps`}
               title="Missing temperature readings"
               desc="Cold-chain logger missing data between 02:00-09:00 at Machakos satellite depot."
             />
             <ProblemCard
               icon="local_shipping"
-              badge="1 dispatch"
+              badge={`${getCount('unconfirmed_transfer')} transfers`}
               title="Transfers without confirmation"
-              desc="Dispatched unit #UN-8842 missing receipt acknowledgement from Kiambu Level 5."
+              desc="Dispatched units missing receipt acknowledgement from receiving facilities."
             />
             <ProblemCard
               icon="timelapse"
-              badge="1 donor"
+              badge={`${getCount('donation_too_soon')} donors`}
               title="Donations too close together"
-              desc="Donor donated 42 days ago; regulatory minimum whole blood interval is 90 days."
+              desc="Donor donated before regulatory minimum whole blood interval."
             />
           </div>
         </div>
@@ -330,9 +363,15 @@ export function Dashboard() {
                   Real-time audit log of local and supervisory actions.
                 </p>
               </div>
-              <span className="material-symbols-outlined text-secondary">
-                history
-              </span>
+              <button
+                className="btn-audit-link"
+                onClick={() => setAuditOpen(true)}
+              >
+                <span className="material-symbols-outlined text-base">
+                  open_in_new
+                </span>
+                View full audit trail
+              </button>
             </div>
             <div className="activity-list">
               <ActivityItem
@@ -384,15 +423,15 @@ export function Dashboard() {
               />
             </div>
             <div className="mt-4 pt-4 border-t border-surface-container">
-              <Link
-                to="/audit"
-                className="inline-flex items-center gap-2 font-label-md text-primary hover:underline"
+              <button
+                onClick={() => setAuditOpen(true)}
+                className="inline-flex items-center gap-2 font-label-md text-primary hover:underline bg-transparent border-none cursor-pointer"
               >
                 View full activity history
                 <span className="material-symbols-outlined text-base">
                   arrow_forward
                 </span>
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -518,6 +557,8 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      <AuditPanel isOpen={auditOpen} onClose={() => setAuditOpen(false)} />
     </div>
   );
 }
