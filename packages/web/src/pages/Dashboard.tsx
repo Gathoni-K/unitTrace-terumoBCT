@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/pages/Dashboard.tsx
-   ========================================================================== */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -111,15 +108,10 @@ export function Dashboard() {
             shield
           </span>
           <span className="font-label-sm">
-            <strong>Safeguard Active:</strong> Demonstration Data — Fictional
-            records for demonstration purposes. Raw hospital databases remain
+            <strong>Safeguard Active:</strong> Demonstration Data: Fictional
+            records for demonstration purposes. Raw hospital data remain
             write-protected.
           </span>
-        </div>
-        <div className="flex gap-4 text-xs opacity-80">
-          <span>Batch #KE-2025-084</span>
-          <span>•</span>
-          <span>NBO Zone Node 04</span>
         </div>
       </div>
 
