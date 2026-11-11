@@ -82,15 +82,12 @@ export function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/queue" element={<RecordsToReview />} />
             <Route path="/tasks/:id" element={<TaskDetail />} />
-            <Route path="/audit" element={<Page title="audit" />} />
+            <Route path="/audit" element={<Dashboard />} />
             <Route path="/methods" element={<MethodResults />} />
-            <Route path="/settings" element={<Page title="settings" />} />
-            <Route
-              path="/sms-simulator"
-              element={<Page title="smsSimulator" />}
-            />
+            <Route path="/settings" element={<Dashboard />} />
+            <Route path="/sms-simulator" element={<Dashboard />} />
             <Route element={<RequireRole requiredRole="supervisor" />}>
-              <Route path="/approvals" element={<Page title="approvals" />} />
+              <Route path="/approvals" element={<RecordsToReview />} />
             </Route>
           </Route>
         </Route>

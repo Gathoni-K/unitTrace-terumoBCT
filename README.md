@@ -15,7 +15,13 @@ Hospital blood bank officers, regional blood transfusion service data stewards (
 They perform manual, end-of-shift reconciliations across disconnected paper registers, blood fridge temperature loggers, phlebotomy rosters, and emergency hospital requisition order books.
 
 **Where does it go wrong?**  
-Blood moves through a highly controlled lifecycle: donor screening → collection → testing → quarantine → storage → hospital compatibility. Each stage must preserve a rigorous link between the donor, unit, and patient. However, healthcare institutions rely on fragmented systems (like Terumo Vista or TOMEs for device capture, standalone hospital EMRs, and legacy Excel). UnitTrace does not replace these; it is a vendor-neutral cross-system layer that audits the data between them.
+A blood unit’s journey is a highly controlled chain of custody: donor screening → collection → testing → quarantine → storage → hospital compatibility. Each stage must preserve a rigorous link between the donor, the unit, and the patient.
+
+Terumo BCT has done exceptional work preventing errors at the source. Their ecosystem:  Vista, TOMEs  and Cadence ensures that data captured directly from Terumo devices is clean, accurate, and perfectly linked.
+
+However, a blood bank’s reality is rarely a single vendor. Data often starts in a Terumo device, flows into a standalone hospital EMR, and is supplemented by legacy Excel sheets or paper registers at different facilities. When data crosses these digital boundaries, the chain of custody breaks.
+
+UnitTrace does not replace Terumo’s hardware-integrated software; it complements it. We are the vendor-neutral data-quality layer that audits the gaps between systems, catching the cross-platform errors and legacy imports that slip through the cracks. In our dataset, this fragmentation creates critical clinical failures:
 
 In the 1-year operational dataset (45,699 donation attempts, 34,242 requested units), data fragmentation creates critical clinical and operational failures:
 

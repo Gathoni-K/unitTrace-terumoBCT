@@ -80,20 +80,6 @@ export function AppShell() {
               <span className="material-symbols-outlined">bar_chart</span>
               <span>Method results</span>
             </Link>
-            <Link
-              to="/settings"
-              className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
-            >
-              <span className="material-symbols-outlined">settings</span>
-              <span>Settings</span>
-            </Link>
-            <Link
-              to="/sms-simulator"
-              className={`nav-item ${isActive('/sms-simulator') ? 'active' : ''}`}
-            >
-              <span className="material-symbols-outlined">phone_android</span>
-              <span>SMS / USSD simulator</span>
-            </Link>
           </div>
         </div>
 

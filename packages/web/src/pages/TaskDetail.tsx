@@ -211,6 +211,38 @@ export function TaskDetail() {
         </div>
       )}
 
+      {/* PII Reveal Bar for Duplicate Donors */}
+      {isDuplicateDonor && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-container-low)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--surface-container)', margin: '4px 0' }}>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary text-lg">
+              {piiRevealed ? 'lock_open' : 'lock'}
+            </span>
+            <span className="text-sm text-on-surface">
+              {piiRevealed
+                ? 'Personal details unmasked (Date of birth & Phone ending)'
+                : 'Personal details masked by default (Kenya Data Protection Act)'}
+            </span>
+          </div>
+          {!piiRevealed ? (
+            <button
+              type="button"
+              className="btn-reveal-pii"
+              onClick={handleRevealPii}
+              disabled={revealingPii}
+            >
+              <span className="material-symbols-outlined text-sm">visibility</span>
+              {revealingPii ? 'Unmasking...' : 'Reveal PII (Logged)'}
+            </button>
+          ) : (
+            <div className="pii-revealed-banner" style={{ padding: '4px 10px', borderRadius: '6px' }}>
+              <span className="material-symbols-outlined text-sm">warning</span>
+              <span className="text-xs font-semibold">PII Revealed — Logged to Access Log</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Data Comparison Grid (Only for duplicate_donor and facility_name) */}
       {isDualRecord ? (
         <div className="comparison-grid">
@@ -622,7 +654,7 @@ export function TaskDetail() {
             </p>
           </div>
         </div>
-      ) : currentRole === 'supervisor' ? (
+      ) : (
         <div className="action-area">
           <h3 className="font-label-lg text-on-surface mb-2">
             What would you like to do?
@@ -681,7 +713,7 @@ export function TaskDetail() {
             change.
           </p>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
