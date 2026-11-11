@@ -80,7 +80,7 @@ npm run server
 
 ### 3. Verify AI Benchmark, Standards, and Multi-Country Support
 ```bash
-# 1. Reproduce AI vs Baseline benchmark (0.48% vs 99.56% precision)
+# 1. Reproduce AI vs Baseline benchmark (8.10% vs 99.56% precision)
 npm run measure:baseline
 
 # 2. Run test suite (83 tests across 22 test files)
@@ -158,18 +158,18 @@ Detailed architecture specifications are documented in [`docs/architecture.md`](
   Pairs with composite score $\ge 0.85$ are flagged with clear match breakdowns.
 
 - **Baseline we compared against**:  
-  Naive deterministic baseline matching strictly on exact `phone_last4` equality (`scripts/detectors/duplicateDonors.ts`).
+  We compared the AI matcher against a sensible human heuristic (exact match on sex + county + phone_last4) (`scripts/detectors/duplicateDonors.ts`).
 
 - **Result on 1-year Kenya dataset (43,363 donors, 452 planted ground-truth pairs)**:
 
-| Metric | Naive Baseline (`phone_last4` only) | UnitTrace AI Fuzzy Matcher | Practical Impact |
+| Metric | Sensible Human Baseline (`sex` + `county` + `phone_last4`) | UnitTrace AI Fuzzy Matcher | Practical Impact |
 |---|---|---|---|
-| **Detected Pairs** | 94,439 | **454** | Reduces review backlog by **99.5%** |
+| **Detected Pairs** | 5,581 | **454** | Reduces review backlog by **91.9%** |
 | **True Positives (TP)** | 452 | **452** | 100% recall of actual duplicate donors |
-| **False Positives (FP)** | 93,987 | **2** | Eliminates 93,985 erroneous merge suggestions |
-| **Precision** | **0.48%** | **99.56%** | **+99.08 percentage points precision gain** |
+| **False Positives (FP)** | 5,129 | **2** | Eliminates 5,127 erroneous merge suggestions |
+| **Precision** | **8.10%** | **99.56%** | **+91.46 percentage points precision gain** |
 | **Recall** | **100.0%** | **100.0%** | Comprehensive coverage |
-| **F1 Score** | **0.0095** | **0.9978** | Viable for operational deployment |
+| **F1 Score** | **0.1498** | **0.9978** | Operationally viable for clinical deployment |
 
 - **How a user sees the reason for a recommendation**:  
   Each task presents an explainable summary (e.g., *"Donors D-0012 and D-0459 share identical birth dates, last 4 phone digits (4821), and similar county ('Kiambu' vs 'Kaimbu'). Confidence: 94%"*).
