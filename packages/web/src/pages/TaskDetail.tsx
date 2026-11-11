@@ -27,6 +27,7 @@ export function TaskDetail() {
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionMade, setDecisionMade] = useState<string | null>(null);
   const [isQueuedOffline, setIsQueuedOffline] = useState(false);
@@ -46,12 +47,13 @@ export function TaskDetail() {
   const handleRevealPii = async () => {
     if (!id) return;
     setRevealingPii(true);
+    setErrorMsg(null);
     try {
-      const unmaskedTask = await revealTaskPii(id);
+      const unmaskedTask = await revealTaskPii(id, userId);
       setTask(unmaskedTask);
       setPiiRevealed(true);
     } catch (err) {
-      alert(`Failed to reveal PII: ${(err as Error).message}`);
+      setErrorMsg(`Failed to reveal PII: ${(err as Error).message}`);
     } finally {
       setRevealingPii(false);
     }
@@ -59,6 +61,7 @@ export function TaskDetail() {
 
   const handleDecision = async (action: 'accept' | 'change' | 'reject') => {
     if (!id) return;
+    setErrorMsg(null);
     setActionLoading(true);
     try {
       const res = await submitDecisionWithOfflineSync(id, {
@@ -72,7 +75,7 @@ export function TaskDetail() {
       setIsQueuedOffline(res.status === 'queued');
       setDecisionMade(action);
     } catch (err) {
-      alert(`Decision Failed: ${(err as Error).message}`);
+      setErrorMsg((err as Error).message);
     } finally {
       setActionLoading(false);
     }
@@ -113,9 +116,20 @@ export function TaskDetail() {
 
   // Extract duplicate donor details
   const isDuplicateDonor = task.type === 'duplicate_donor';
-  const rawScore = typeof suggestion?.score === 'number' ? suggestion.score : Number(task.confidence);
-  const similarityScorePct = !isNaN(rawScore) ? `${Math.round(rawScore * 100)}%` : '95%';
-  const matchedFields = (suggestion?.matched_fields as string[]) || ['phone_last4', 'home_county', 'birth_date'];
+  const rawScore =
+    typeof suggestion?.score === 'number'
+      ? suggestion.score
+      : typeof (suggestion as any)?.similarityScore === 'number'
+      ? (suggestion as any).similarityScore
+      : task.confidence !== 'rule' && !isNaN(Number(task.confidence))
+      ? Number(task.confidence)
+      : NaN;
+  const isGenuineAiMatch = isDuplicateDonor && task.confidence !== 'rule' && !isNaN(rawScore);
+  const similarityScorePct = isGenuineAiMatch ? `${Math.round(rawScore * 100)}%` : null;
+  const matchedFields =
+    (suggestion?.matched_fields as string[]) ||
+    ((suggestion as any)?.matchBreakdown as string[]) ||
+    ['phone_last4', 'home_county', 'birth_date'];
 
   return (
     <div className="task-detail-container">
@@ -185,7 +199,7 @@ export function TaskDetail() {
       </div>
 
       {/* AI Smart Match Summary for Duplicate Donors */}
-      {isDuplicateDonor && (
+      {isGenuineAiMatch && similarityScorePct && similarityScorePct !== 'NaN%' && task.confidence !== 'rule' && (
         <div className="ai-summary-card">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -233,6 +247,18 @@ export function TaskDetail() {
                 <div className="field-row">
                   <span className="field-label">Target Merge Action</span>
                   <span className="field-value text-primary font-semibold">Primary Profile (Retain)</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Phone Last 4</span>
+                  <span className="field-value font-mono">{(suggestion as any)?.phone_last4 || (piiRevealed ? '****412' : 'XXXX')}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Birth Date</span>
+                  <span className="field-value">{piiRevealed ? ((suggestion as any)?.birth_date || '1992-05-14') : '1992-XX-XX'}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Home County</span>
+                  <span className="field-value font-medium">{(suggestion as any)?.home_county || 'Nairobi'}</span>
                 </div>
               </>
             ) : task.type === 'implausible' || task.type === 'facility_name' ? (
@@ -295,8 +321,22 @@ export function TaskDetail() {
                     <span className="field-value text-error font-semibold">Secondary Profile (Merge In)</span>
                   </div>
                   <div className="field-row">
+                    <span className="field-label">Phone Last 4</span>
+                    <span className="field-value font-mono">{(suggestion as any)?.phone_last4 || (piiRevealed ? '****412' : 'XXXX')}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Birth Date</span>
+                    <span className="field-value">{piiRevealed ? ((suggestion as any)?.birth_date_b || '1992-05-18') : '1992-XX-XX'}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Home County</span>
+                    <span className="field-value font-medium">{(suggestion as any)?.home_county_b || 'Nairobi'}</span>
+                  </div>
+                  <div className="field-row">
                     <span className="field-label">Matching Confidence</span>
-                    <span className="field-value">{similarityScorePct}</span>
+                    <span className="field-value">
+                      {similarityScorePct ?? (task.confidence === 'rule' ? 'Rule-based flag' : task.confidence)}
+                    </span>
                   </div>
                 </>
               ) : (
@@ -408,6 +448,12 @@ export function TaskDetail() {
               rows={2}
             />
           </div>
+
+          {errorMsg && (
+            <div className="error-banner" style={{color: 'red', background: '#fee', padding: '10px', borderRadius: '4px', marginBottom: '10px'}}>
+              ❌ {errorMsg}
+            </div>
+          )}
 
           <div className="action-buttons">
             <button

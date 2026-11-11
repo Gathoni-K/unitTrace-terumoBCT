@@ -73,6 +73,16 @@ export function Dashboard() {
   const totalOpen = Math.max(0, totalDefects - totalResolved);
   const waitingSupervisor = Math.max(0, duplicateDonors - (breakdownMap['duplicate_donor']?.resolved ?? 0));
 
+  const totalRecordsChecked = useMemo(() => {
+    if (metrics?.beforeValue && metrics.beforeValue > 0) {
+      return metrics.beforeValue;
+    }
+    if (metrics?.taskBreakdown && metrics.taskBreakdown.length > 0) {
+      return metrics.taskBreakdown.reduce((sum, item) => sum + (item.beforeOpen || 0), 0);
+    }
+    return totalDefects;
+  }, [metrics, totalDefects]);
+
   return (
     <div className="dashboard-container">
       {/* Safeguard Ribbon */}
@@ -158,7 +168,9 @@ export function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-on-surface">43,363</div>
+              <div className="font-headline-xl text-on-surface">
+                {loading ? '…' : totalRecordsChecked.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
                 Donors &amp; transfers across national network
               </p>
