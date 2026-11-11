@@ -1,6 +1,5 @@
 /* ==========================================================================
    packages/web/src/api.ts
-   Real API client — talks to Gathoni's live backend
    ========================================================================== */
 
 const API_BASE = 'https://unittrace-terumobct.onrender.com';
@@ -62,6 +61,7 @@ export const TASK_TYPE_LABELS: Record<string, string> = {
   unknown_patient_blood_group: 'Unknown patient blood group',
   unconfirmed_transfer: 'Unconfirmed transfer',
   donation_too_soon: 'Donation too close together',
+  implausible: 'Implausible value',
 };
 
 export const TASK_TYPE_ICONS: Record<string, string> = {
@@ -73,11 +73,8 @@ export const TASK_TYPE_ICONS: Record<string, string> = {
   unknown_patient_blood_group: 'emergency',
   unconfirmed_transfer: 'local_shipping',
   donation_too_soon: 'timelapse',
+  implausible: 'warning',
 };
-
-/* ==========================================================================
-   Task Detail API functions (append to the bottom of api.ts)
-   ========================================================================== */
 
 export interface DecisionPayload {
   action: 'accept' | 'change' | 'reject' | 'approve' | 'send_back' | 'escalate';
@@ -97,9 +94,7 @@ export async function getTask(id: string): Promise<TaskRecord> {
   return res.json();
 }
 
-export async function revealTaskPii(
-  id: string,
-): Promise<Record<string, unknown>> {
+export async function revealTaskPii(id: string): Promise<TaskRecord> {
   const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`, {
     method: 'POST',
     headers: getHeaders(),
@@ -129,16 +124,17 @@ export async function submitDecision(
   return res.json();
 }
 
-export async function getAuditEntries(): Promise<{
-  entries: Array<Record<string, unknown>>;
-}> {
-  try {
-    const res = await fetch(`${API_BASE}/api/audit`, { headers: getHeaders() });
-    if (!res.ok) return { entries: [] };
-    return res.json();
-  } catch {
-    return { entries: [] };
+export async function submitDecisionWithOfflineSync(
+  id: string,
+  payload: DecisionPayload,
+): Promise<{ ok: boolean; status: 'queued' | 'done'; task?: TaskRecord }> {
+  if (!navigator.onLine) {
+    const { queueDecision } = await import('./offline');
+    await queueDecision({ taskId: id, payload });
+    return { ok: true, status: 'queued' };
   }
+  const result = await submitDecision(id, payload);
+  return { ok: true, status: 'done', task: result.task };
 }
 
 export interface MetricsResponse {
@@ -156,10 +152,47 @@ export interface MetricsResponse {
   }>;
 }
 
+export type BeforeAfterReport = MetricsResponse;
+
 export async function getMetrics(): Promise<MetricsResponse> {
   const res = await fetch(`${API_BASE}/api/metrics/before-after`, {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error(`Failed to get metrics: ${res.status}`);
   return res.json();
+}
+
+export interface AuditLogItem {
+  id: string;
+  task_id: string;
+  actor: string;
+  user_role: 'clerk' | 'supervisor';
+  action: string;
+  channel: 'web' | 'offline_sync' | 'sms' | 'ussd';
+  timestamp: string;
+}
+
+export async function getAuditLogs(limit = 10): Promise<AuditLogItem[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/audit?limit=${limit}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    const body = await res.json();
+    return body.entries ?? body.logs ?? (Array.isArray(body) ? body : []);
+  } catch {
+    return [];
+  }
+}
+
+export async function getAuditEntries(): Promise<{
+  entries: Array<Record<string, unknown>>;
+}> {
+  try {
+    const res = await fetch(`${API_BASE}/api/audit`, { headers: getHeaders() });
+    if (!res.ok) return { entries: [] };
+    return res.json();
+  } catch {
+    return { entries: [] };
+  }
 }

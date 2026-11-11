@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getTask,
-  submitDecision,
   revealTaskPii,
+  submitDecisionWithOfflineSync,
   TASK_TYPE_LABELS,
   TASK_TYPE_ICONS,
   type TaskRecord,
 } from '../api';
+import { useAuth } from '../providers';
 import './TaskDetail.css';
 import { useToast } from '../components/Toast';
 
@@ -18,14 +19,26 @@ export function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { role } = useAuth();
+
+  const currentRole: 'clerk' | 'supervisor' =
+    role === 'supervisor' ? 'supervisor' : 'clerk';
+  const userName =
+    currentRole === 'supervisor'
+      ? 'Dr. Mwangi (Supervisor)'
+      : 'Sarah Achieng (Data Clerk)';
+  const userId =
+    currentRole === 'supervisor' ? 'supervisor-mwangi' : 'clerk-sarah';
+
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionMade, setDecisionMade] = useState<string | null>(null);
+  const [isQueuedOffline, setIsQueuedOffline] = useState(false);
   const [note, setNote] = useState('');
   const [piiRevealed, setPiiRevealed] = useState(false);
-  const [piiData, setPiiData] = useState<Record<string, unknown> | null>(null);
+  const [revealingPii, setRevealingPii] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -36,24 +49,43 @@ export function TaskDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const handleRevealPii = async () => {
+    if (!id) return;
+    setRevealingPii(true);
+    try {
+      const unmaskedTask = await revealTaskPii(id);
+      setTask(unmaskedTask);
+      setPiiRevealed(true);
+      showToast(
+        'warning',
+        '⚠️ PII Revealed. This action has been logged to the audit trail.',
+      );
+    } catch (err) {
+      showToast('error', `Failed to reveal PII: ${(err as Error).message}`);
+    } finally {
+      setRevealingPii(false);
+    }
+  };
+
   const handleDecision = async (action: 'accept' | 'change' | 'reject') => {
     if (!id) return;
     setActionLoading(true);
     try {
-      await submitDecision(id, {
+      const res = await submitDecisionWithOfflineSync(id, {
         action,
-        user_id: 'clerk-sarah',
-        actor: 'Sarah Achieng',
-        user_role:
-          (localStorage.getItem('userRole') as 'clerk' | 'supervisor') ||
-          'clerk',
+        user_id: userId,
+        actor: userName,
+        user_role: currentRole,
         channel: 'web',
         note: note || undefined,
       });
+      setIsQueuedOffline(res.status === 'queued');
       setDecisionMade(action);
       showToast(
         'success',
-        `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
+        res.status === 'queued'
+          ? `Decision queued offline. Will sync when connection returns.`
+          : `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
       );
     } catch (err) {
       const e = err as Error & { status?: number };
@@ -67,21 +99,6 @@ export function TaskDetail() {
       }
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleRevealPii = async () => {
-    if (!id) return;
-    try {
-      const data = await revealTaskPii(id);
-      setPiiData(data);
-      setPiiRevealed(true);
-      showToast(
-        'warning',
-        '⚠️ PII Revealed. This action has been logged to the audit trail.',
-      );
-    } catch (err) {
-      showToast('error', `Failed to reveal PII: ${(err as Error).message}`);
     }
   };
 
@@ -132,7 +149,6 @@ export function TaskDetail() {
         </div>
       </div>
 
-      {/* Reason Box */}
       <div className="reason-box">
         <span className="material-symbols-outlined text-primary text-2xl shrink-0">
           info
@@ -145,7 +161,6 @@ export function TaskDetail() {
         </div>
       </div>
 
-      {/* Data Comparison */}
       <div className="comparison-grid">
         <div className="record-card">
           <div className="record-header">
@@ -153,17 +168,29 @@ export function TaskDetail() {
             <span className="mono-tag">{task.recordIds[0]}</span>
           </div>
           <div className="record-body">
-            {observedValue !== undefined ? (
+            {!piiRevealed && (
+              <button
+                className="btn-reveal-pii"
+                onClick={handleRevealPii}
+                disabled={revealingPii}
+              >
+                <span className="material-symbols-outlined">visibility</span>
+                {revealingPii ? 'Revealing…' : 'Reveal PII'}
+              </button>
+            )}
+            {piiRevealed && (
+              <div className="pii-revealed-banner">
+                <span className="material-symbols-outlined">warning</span>
+                <span>PII Revealed — action logged to audit trail</span>
+              </div>
+            )}
+            {observedValue !== undefined && (
               <div className="field-row">
                 <span className="field-label">Observed Value</span>
                 <span className="field-value text-error font-bold">
                   {String(observedValue)}
                 </span>
               </div>
-            ) : (
-              <p className="text-sm text-secondary">
-                No detailed field data available.
-              </p>
             )}
             <div className="field-row">
               <span className="field-label">Detected by</span>
@@ -183,25 +210,10 @@ export function TaskDetail() {
         {task.recordIds.length > 1 && (
           <div className="record-card">
             <div className="record-header">
-              <h3 className="font-label-md">Record A</h3>
-              <span className="mono-tag">{task.recordIds[0]}</span>
+              <h3 className="font-label-md">Record B</h3>
+              <span className="mono-tag">{task.recordIds[1]}</span>
             </div>
             <div className="record-body">
-              {!piiRevealed && (
-                <button className="btn-reveal-pii" onClick={handleRevealPii}>
-                  <span className="material-symbols-outlined">visibility</span>
-                  Reveal PII
-                </button>
-              )}
-              {piiRevealed && piiData && (
-                <div className="pii-revealed-banner">
-                  <span className="material-symbols-outlined">warning</span>
-                  <span>PII Revealed — action logged to audit trail</span>
-                </div>
-              )}
-              <p className="text-sm text-secondary">
-                Coupled record for review.
-              </p>
               <div className="field-row">
                 <span className="field-label">Reference ID</span>
                 <span className="field-value">{task.recordIds[1]}</span>
@@ -211,7 +223,6 @@ export function TaskDetail() {
         )}
       </div>
 
-      {/* Lock notice */}
       <div className="lock-notice">
         <span className="material-symbols-outlined text-error">lock</span>
         <div>
@@ -223,7 +234,6 @@ export function TaskDetail() {
         </div>
       </div>
 
-      {/* Action Area */}
       {isDecisionMade ? (
         <div className="success-box">
           <span className="material-symbols-outlined text-success text-3xl">
@@ -231,11 +241,12 @@ export function TaskDetail() {
           </span>
           <div>
             <h3 className="font-headline-sm text-success">
-              Decision recorded: {decisionMade.toUpperCase()}
+              Decision recorded: {decisionMade?.toUpperCase()}
             </h3>
             <p className="text-sm text-on-surface-variant mt-1">
-              The change has been logged in the audit trail. If this requires
-              supervisor approval, it will now appear in their queue.
+              {isQueuedOffline
+                ? 'Queued offline. Will sync when connection returns.'
+                : 'The change has been logged in the audit trail. If this requires supervisor approval, it will now appear in their queue.'}
             </p>
           </div>
         </div>
@@ -244,7 +255,6 @@ export function TaskDetail() {
           <h3 className="font-label-lg text-on-surface mb-2">
             What would you like to do?
           </h3>
-
           <div className="form-group mb-4">
             <label className="font-label-sm text-secondary block mb-1">
               Optional note (required for Reject)
@@ -257,7 +267,6 @@ export function TaskDetail() {
               rows={2}
             />
           </div>
-
           <div className="action-buttons">
             <button
               className="btn-accept"

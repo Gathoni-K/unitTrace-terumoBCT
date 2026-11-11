@@ -1,237 +1,262 @@
 /* ==========================================================================
-   packages/web/src/pages/TaskDetail.css
+   packages/web/src/pages/TaskDetail.tsx
    ========================================================================== */
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  getTask,
+  revealTaskPii,
+  submitDecisionWithOfflineSync,
+  TASK_TYPE_LABELS,
+  TASK_TYPE_ICONS,
+  type TaskRecord,
+} from '../api';
+import { useAuth } from '../providers';
+import './TaskDetail.css';
+import { useToast } from '../components/Toast';
 
-.task-detail-container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+export function TaskDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { role } = useAuth();
 
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  color: var(--on-surface-variant);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0;
-  width: fit-content;
-  transition: color 0.2s;
-}
-.btn-back:hover {
-  color: var(--primary);
-}
+  const currentRole: 'clerk' | 'supervisor' = role === 'supervisor' ? 'supervisor' : 'clerk';
+  const userName = currentRole === 'supervisor' ? 'Dr. Mwangi (Supervisor)' : 'Sarah Achieng (Data Clerk)';
+  const userId = currentRole === 'supervisor' ? 'supervisor-mwangi' : 'clerk-sarah';
 
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+  const [task, setTask] = useState<TaskRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [decisionMade, setDecisionMade] = useState<string | null>(null);
+  const [isQueuedOffline, setIsQueuedOffline] = useState(false);
+  const [note, setNote] = useState('');
+  const [piiRevealed, setPiiRevealed] = useState(false);
+  const [revealingPii, setRevealingPii] = useState(false);
 
-/* Reason Box */
-.reason-box {
-  display: flex;
-  gap: 16px;
-  padding: 20px;
-  background: var(--surface-container-low);
-  border-left: 4px solid var(--primary);
-  border-radius: var(--border-radius-lg);
-}
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    getTask(id)
+      .then((t) => setTask(t))
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [id]);
 
-/* Comparison Grid */
-.comparison-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
+  const handleRevealPii = async () => {
+    if (!id) return;
+    setRevealingPii(true);
+    try {
+      const unmaskedTask = await revealTaskPii(id);
+      setTask(unmaskedTask);
+      setPiiRevealed(true);
+      showToast('warning', '⚠️ PII Revealed. This action has been logged to the audit trail.');
+    } catch (err) {
+      showToast('error', `Failed to reveal PII: ${(err as Error).message}`);
+    } finally {
+      setRevealingPii(false);
+    }
+  };
 
-.record-card {
-  background: var(--surface-container-lowest);
-  border: 1px solid var(--surface-container);
-  border-radius: var(--border-radius-xl);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
+  const handleDecision = async (action: 'accept' | 'change' | 'reject') => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const res = await submitDecisionWithOfflineSync(id, {
+        action,
+        user_id: userId,
+        actor: userName,
+        user_role: currentRole,
+        channel: 'web',
+        note: note || undefined,
+      });
+      setIsQueuedOffline(res.status === 'queued');
+      setDecisionMade(action);
+      showToast(
+        'success',
+        res.status === 'queued'
+          ? `Decision queued offline. Will sync when connection returns.`
+          : `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
+      );
+    } catch (err) {
+      const e = err as Error & { status?: number };
+      if (e.status === 403) {
+        showToast(
+          'error',
+          'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
+        );
+      } else {
+        showToast('error', e.message || 'Failed to submit decision.');
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-.record-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: var(--surface-container-low);
-  border-bottom: 1px solid var(--surface-container);
-}
+  if (loading)
+    return (
+      <div className="task-detail-container">
+        <p>Loading task…</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="task-detail-container">
+        <p className="text-error">Error: {error}</p>
+      </div>
+    );
+  if (!task)
+    return (
+      <div className="task-detail-container">
+        <p>Task not found.</p>
+      </div>
+    );
 
-.record-body {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+  const isDecisionMade = decisionMade !== null;
+  const suggestion = task.suggestion as Record<string, unknown> | undefined;
+  const observedValue = suggestion?.observedValue;
 
-.field-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px dashed var(--surface-container);
-  font-size: 14px;
-}
-.field-row:last-child {
-  border-bottom: none;
-}
-.field-label {
-  color: var(--secondary);
-}
-.field-value {
-  font-weight: 500;
-  color: var(--on-surface);
-}
+  return (
+    <div className="task-detail-container">
+      <button className="btn-back" onClick={() => navigate('/queue')}>
+        <span className="material-symbols-outlined">arrow_back</span>
+        Back to queue
+      </button>
 
-/* Lock Notice */
-.lock-notice {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  background: var(--error-container);
-  color: var(--on-error-container);
-  border-radius: var(--border-radius-xl);
-  align-items: flex-start;
-}
+      <div className="task-header">
+        <div>
+          <span className="mono-tag">#{task.id}</span>
+          <h1 className="font-headline-lg text-on-surface mt-2">
+            {TASK_TYPE_LABELS[task.type] ?? task.type}
+          </h1>
+        </div>
+        <div className={`confidence-badge confidence-${task.confidence} text-sm px-4 py-2`}>
+          <span className="material-symbols-outlined text-base">verified</span>
+          {task.confidence === 'rule' ? 'Rule-based flag' : `Confidence: ${task.confidence}`}
+        </div>
+      </div>
 
-/* Action Area */
-.action-area {
-  background: var(--surface-container-lowest);
-  padding: 24px;
-  border-radius: var(--border-radius-xl);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--surface-container);
-}
+      <div className="reason-box">
+        <span className="material-symbols-outlined text-primary text-2xl shrink-0">info</span>
+        <div>
+          <h3 className="font-label-md text-on-surface mb-1">Why this was flagged</h3>
+          <p className="font-body-md text-on-surface-variant">{task.reason}</p>
+        </div>
+      </div>
 
-.note-input {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--surface-container-low);
-  border: 1px solid var(--surface-container);
-  border-radius: var(--border-radius-lg);
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--on-surface);
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.note-input:focus {
-  border-color: var(--primary);
-}
+      <div className="comparison-grid">
+        <div className="record-card">
+          <div className="record-header">
+            <h3 className="font-label-md">Record A</h3>
+            <span className="mono-tag">{task.recordIds[0]}</span>
+          </div>
+          <div className="record-body">
+            {!piiRevealed && (
+              <button className="btn-reveal-pii" onClick={handleRevealPii} disabled={revealingPii}>
+                <span className="material-symbols-outlined">visibility</span>
+                {revealingPii ? 'Revealing…' : 'Reveal PII'}
+              </button>
+            )}
+            {piiRevealed && (
+              <div className="pii-revealed-banner">
+                <span className="material-symbols-outlined">warning</span>
+                <span>PII Revealed — action logged to audit trail</span>
+              </div>
+            )}
+            {observedValue !== undefined && (
+              <div className="field-row">
+                <span className="field-label">Observed Value</span>
+                <span className="field-value text-error font-bold">{String(observedValue)}</span>
+              </div>
+            )}
+            <div className="field-row">
+              <span className="field-label">Detected by</span>
+              <span className="field-value">
+                {task.source === 'smart' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
+              </span>
+            </div>
+            <div className="field-row">
+              <span className="field-label">Date flagged</span>
+              <span className="field-value">{new Date(task.createdAt).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
 
-.action-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-}
+        {task.recordIds.length > 1 && (
+          <div className="record-card">
+            <div className="record-header">
+              <h3 className="font-label-md">Record B</h3>
+              <span className="mono-tag">{task.recordIds[1]}</span>
+            </div>
+            <div className="record-body">
+              <div className="field-row">
+                <span className="field-label">Reference ID</span>
+                <span className="field-value">{task.recordIds[1]}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-.action-buttons button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 48px;
-  border: none;
-  border-radius: var(--border-radius-xl);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.action-buttons button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+      <div className="lock-notice">
+        <span className="material-symbols-outlined text-error">lock</span>
+        <div>
+          <strong className="text-on-surface">Sensitive field locked.</strong>
+          <p className="text-sm text-on-surface-variant">
+            Any changes to blood group or lab results require a qualified person. This cannot be changed by SMS or automatically.
+          </p>
+        </div>
+      </div>
 
-.btn-accept {
-  background: #15803d;
-  color: #ffffff;
-}
-.btn-accept:hover:not(:disabled) {
-  background: #166534;
-}
-
-.btn-change {
-  background: #b45309;
-  color: #ffffff;
-}
-.btn-change:hover:not(:disabled) {
-  background: #92400e;
-}
-
-.btn-reject {
-  background: var(--error);
-  color: var(--on-error);
-}
-.btn-reject:hover:not(:disabled) {
-  background: #93000a;
-}
-
-/* Success Box */
-.success-box {
-  display: flex;
-  gap: 16px;
-  padding: 24px;
-  background: #dcfce7;
-  color: #14532d;
-  border-radius: var(--border-radius-xl);
-  border: 1px solid #86efac;
-  align-items: flex-start;
-}
-
-@media (max-width: 640px) {
-  .action-buttons {
-    grid-template-columns: 1fr;
-  }
-  .comparison-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.btn-reveal-pii {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--surface-container-low);
-  border: 1px solid var(--surface-container);
-  border-radius: var(--border-radius-lg);
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 12px;
-}
-.btn-reveal-pii:hover {
-  background: var(--surface-container);
-  border-color: var(--primary);
-}
-
-.pii-revealed-banner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: #fef3c7;
-  color: #b45309;
-  border-radius: var(--border-radius-lg);
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 12px;
+      {isDecisionMade ? (
+        <div className="success-box">
+          <span className="material-symbols-outlined text-success text-3xl">check_circle</span>
+          <div>
+            <h3 className="font-headline-sm text-success">
+              Decision recorded: {decisionMade?.toUpperCase()}
+            </h3>
+            <p className="text-sm text-on-surface-variant mt-1">
+              {isQueuedOffline
+                ? 'Queued offline. Will sync when connection returns.'
+                : 'The change has been logged in the audit trail. If this requires supervisor approval, it will now appear in their queue.'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="action-area">
+          <h3 className="font-label-lg text-on-surface mb-2">What would you like to do?</h3>
+          <div className="form-group mb-4">
+            <label className="font-label-sm text-secondary block mb-1">
+              Optional note (required for Reject)
+            </label>
+            <textarea
+              className="note-input"
+              placeholder="Add context for the audit trail..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <div className="action-buttons">
+            <button className="btn-accept" onClick={() => handleDecision('accept')} disabled={actionLoading}>
+              <span className="material-symbols-outlined">check</span>
+              Accept
+            </button>
+            <button className="btn-change" onClick={() => handleDecision('change')} disabled={actionLoading}>
+              <span className="material-symbols-outlined">edit</span>
+              Change
+            </button>
+            <button className="btn-reject" onClick={() => handleDecision('reject')} disabled={actionLoading || !note.trim()}>
+              <span className="material-symbols-outlined">close</span>
+              Reject
+            </button>
+          </div>
+          <p className="text-xs text-secondary text-center mt-3">
+            Nothing is auto-corrected. A human decision is required for every change.
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }

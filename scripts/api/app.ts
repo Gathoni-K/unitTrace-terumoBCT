@@ -1,13 +1,24 @@
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 import type { Pool } from 'pg';
-import { listTasks, getTask, revealTask, submitDecision, type DecisionPayload } from './tasksService.js';
+import {
+  listTasks,
+  getTask,
+  revealTask,
+  submitDecision,
+  listAuditLogs,
+  type DecisionPayload,
+  type AuditLogEntry,
+} from './tasksService.js';
 import { computeBeforeAfterMetrics } from '../metrics/before-after.js';
 
 function setCorsHeaders(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-role, x-user-id');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, x-user-role, x-user-id, X-User-Role, X-User-Id',
+  );
 }
 
 function sendJson(res: ServerResponse, statusCode: number, data: unknown): void {
@@ -100,7 +111,16 @@ export function createApiHandler(pool: Pool) {
         return;
       }
 
-      // 3. GET /api/tasks
+      // 3. GET /api/audit (20 most recent audit log entries)
+      if (method === 'GET' && pathname === '/api/audit') {
+        const limitParam = parsedUrl.searchParams.get('limit');
+        const limit = limitParam && !isNaN(Number(limitParam)) ? Number(limitParam) : 20;
+        const entries = await listAuditLogs(pool, limit);
+        sendJson(res, 200, entries);
+        return;
+      }
+
+      // 4. GET /api/tasks
       if (method === 'GET' && pathname === '/api/tasks') {
         const status = parsedUrl.searchParams.get('status') ?? undefined;
         const type = parsedUrl.searchParams.get('type') ?? undefined;
