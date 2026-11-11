@@ -15,6 +15,7 @@ export function Dashboard() {
   const [metrics, setMetrics] = useState<BeforeAfterReport | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingAudit, setRefreshingAudit] = useState(false);
 
   useEffect(() => {
     getMetrics()
@@ -24,12 +25,24 @@ export function Dashboard() {
       })
       .finally(() => setLoading(false));
 
-    getAuditLogs(5)
+    getAuditLogs(10)
       .then(setAuditLogs)
       .catch((err) => {
         console.warn('Audit logs API fallback:', err);
       });
   }, []);
+
+  const handleRefreshAudit = async () => {
+    setRefreshingAudit(true);
+    try {
+      const logs = await getAuditLogs(10);
+      setAuditLogs(logs);
+    } catch (err) {
+      console.error('Failed to refresh audit logs:', err);
+    } finally {
+      setRefreshingAudit(false);
+    }
+  };
 
   const breakdownMap = useMemo(() => {
     const map: Record<string, { before: number; resolved: number }> = {};
@@ -125,7 +138,7 @@ export function Dashboard() {
                 <span className="material-symbols-outlined">play_arrow</span>
                 Continue reviewing ({totalOpen.toLocaleString()} open tasks)
               </Link>
-              <button className="btn-hero-secondary">
+              <button type="button" className="btn-hero-secondary">
                 <span className="material-symbols-outlined">upload_file</span>
                 Upload new dataset
               </button>
@@ -379,22 +392,31 @@ export function Dashboard() {
         <div className="two-col-grid">
           {/* Activity */}
           <div className="content-card">
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="font-headline-md text-on-surface">
-                  Recent Activity
+                  Recent Activity / Audit Log
                 </h2>
                 <p className="font-body-md text-secondary text-xs">
-                  Real-time audit log of local and supervisory actions.
+                  Real-time immutable audit trail (Web &amp; SMS)
                 </p>
               </div>
-              <span className="material-symbols-outlined text-secondary">
-                history
-              </span>
+              <button
+                type="button"
+                className="btn-refresh-audit"
+                onClick={handleRefreshAudit}
+                disabled={refreshingAudit}
+                title="Refresh audit log"
+              >
+                <span className={`material-symbols-outlined text-sm ${refreshingAudit ? 'spin-animation' : ''}`}>
+                  refresh
+                </span>
+                <span>{refreshingAudit ? 'Refreshing…' : 'Refresh'}</span>
+              </button>
             </div>
             <div className="activity-list">
               {auditLogs.length > 0 ? (
-                auditLogs.slice(0, 4).map((entry) => {
+                auditLogs.slice(0, 6).map((entry) => {
                   const isSupervisor = entry.user_role === 'supervisor';
                   const initials = isSupervisor ? 'DM' : 'SA';
                   const roleLabel = isSupervisor ? 'Supervisor' : 'Data Clerk';
@@ -402,7 +424,9 @@ export function Dashboard() {
                   const dateStr = new Date(entry.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
+                    second: '2-digit',
                   });
+                  const isSms = (entry.channel || '').toLowerCase() === 'sms';
 
                   return (
                     <ActivityItem
@@ -411,9 +435,14 @@ export function Dashboard() {
                       name={actorName}
                       role={roleLabel}
                       time={dateStr}
+                      channel={entry.channel}
                       text={
                         <>
-                          Recorded decision on Task #{entry.task_id} via {entry.channel ? entry.channel.toUpperCase() : 'WEB'}.
+                          {isSms ? (
+                            <>Decision received on Task #{entry.task_id} via SMS webhook integration.</>
+                          ) : (
+                            <>Recorded decision on Task #{entry.task_id} from Clinical Workbench.</>
+                          )}
                         </>
                       }
                       tag={entry.action.toUpperCase()}
@@ -434,7 +463,8 @@ export function Dashboard() {
                     initials="SA"
                     name="Sarah Achieng"
                     role="Data Clerk"
-                    time="22m ago"
+                    time="12m ago"
+                    channel="web"
                     text={
                       <>
                         Resolved missing blood group for donor registration{' '}
@@ -446,10 +476,27 @@ export function Dashboard() {
                     extra="Clinical verified"
                   />
                   <ActivityItem
+                    initials="AT"
+                    name="+254711000000"
+                    role="Field Clerk"
+                    time="24m ago"
+                    channel="sms"
+                    text={
+                      <>
+                        Approved cold chain inspection for dispatch{' '}
+                        <span className="mono-tag">TRF-001048</span> via SMS reply.
+                      </>
+                    }
+                    tag="Transfer Confirmed"
+                    tagClass="bg-secondary-container text-on-secondary-fixed"
+                    extra="Africa's Talking Gateway"
+                  />
+                  <ActivityItem
                     initials="DM"
                     name="Dr. Mwangi"
                     role="Supervisor"
                     time="1h ago"
+                    channel="web"
                     text={
                       <>
                         Approved duplicate donor merge for{' '}
@@ -459,22 +506,6 @@ export function Dashboard() {
                     }
                     tag="Supervisor Merged"
                     tagClass="bg-surface-container-high text-on-surface"
-                  />
-                  <ActivityItem
-                    initials="SYS"
-                    name="Automated Ingest"
-                    role="System"
-                    time="2h ago"
-                    text={
-                      <>
-                        Completed inspection on batch{' '}
-                        <span className="mono-tag">KNBTS_Live_Dataset</span> (43,363
-                        records checked). 8 rule-sets evaluated.
-                      </>
-                    }
-                    tag="43,363 Checked"
-                    tagClass="bg-secondary-container text-on-secondary-fixed"
-                    extra="Zero dropped rows"
                   />
                 </>
               )}
@@ -633,18 +664,49 @@ function ActivityItem({
   text,
   tag,
   tagClass,
+  channel,
   extra,
 }: any) {
+  const isSms = (channel || '').toLowerCase() === 'sms';
+  const isWeb = (channel || '').toLowerCase() === 'web';
+
   return (
     <div className="activity-item">
-      <div className="activity-avatar">{initials}</div>
+      <div
+        className="activity-avatar"
+        style={
+          isSms
+            ? { backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }
+            : undefined
+        }
+      >
+        {isSms ? (
+          <span className="material-symbols-outlined text-base">phone_android</span>
+        ) : (
+          initials
+        )}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-label-md text-on-surface font-semibold">
               {name}
             </span>
             <span className="role-tag">{role}</span>
+
+            {isSms && (
+              <span className="channel-badge channel-sms">
+                <span className="material-symbols-outlined text-xs">phone_android</span>
+                Via SMS
+              </span>
+            )}
+
+            {isWeb && (
+              <span className="channel-badge channel-web">
+                <span className="material-symbols-outlined text-xs">laptop</span>
+                Via Web
+              </span>
+            )}
           </div>
           <span className="text-xs text-secondary shrink-0">{time}</span>
         </div>

@@ -7,11 +7,12 @@ import { useAuth } from '../providers';
 import {
   getTask,
   revealTaskPii,
-  submitDecision,
+  submitDecisionWithOfflineSync,
   TASK_TYPE_LABELS,
   TASK_TYPE_ICONS,
   type TaskRecord,
 } from '../api';
+
 import './TaskDetail.css';
 
 export function TaskDetail() {
@@ -28,6 +29,7 @@ export function TaskDetail() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionMade, setDecisionMade] = useState<string | null>(null);
+  const [isQueuedOffline, setIsQueuedOffline] = useState(false);
   const [note, setNote] = useState('');
   const [piiRevealed, setPiiRevealed] = useState(false);
   const [revealingPii, setRevealingPii] = useState(false);
@@ -59,7 +61,7 @@ export function TaskDetail() {
     if (!id) return;
     setActionLoading(true);
     try {
-      await submitDecision(id, {
+      const res = await submitDecisionWithOfflineSync(id, {
         action,
         user_id: userId,
         actor: userName,
@@ -67,6 +69,7 @@ export function TaskDetail() {
         channel: 'web',
         note: note || undefined,
       });
+      setIsQueuedOffline(res.status === 'queued');
       setDecisionMade(action);
     } catch (err) {
       alert(`Decision Failed: ${(err as Error).message}`);
@@ -116,7 +119,7 @@ export function TaskDetail() {
 
   return (
     <div className="task-detail-container">
-      <button className="btn-back" onClick={() => navigate('/queue')}>
+      <button type="button" className="btn-back" onClick={() => navigate('/queue')}>
         <span className="material-symbols-outlined">arrow_back</span>
         Back to queue
       </button>
@@ -341,17 +344,35 @@ export function TaskDetail() {
 
       {/* Action Area */}
       {isDecisionMade ? (
-        <div className="success-box">
-          <span className="material-symbols-outlined text-success text-3xl">
-            check_circle
+        <div
+          className={`success-box ${
+            isQueuedOffline ? 'bg-amber-50 border-amber-300 text-amber-900' : ''
+          }`}
+          style={
+            isQueuedOffline
+              ? { backgroundColor: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }
+              : undefined
+          }
+        >
+          <span
+            className={`material-symbols-outlined text-3xl ${
+              isQueuedOffline ? 'text-amber-700' : 'text-success'
+            }`}
+          >
+            {isQueuedOffline ? 'cloud_off' : 'check_circle'}
           </span>
           <div>
-            <h3 className="font-headline-sm text-success">
+            <h3
+              className={`font-headline-sm ${
+                isQueuedOffline ? 'text-amber-900' : 'text-success'
+              }`}
+            >
               Decision Recorded: {decisionMade.toUpperCase()}
             </h3>
-            <p className="text-sm text-on-surface-variant mt-1">
-              The decision was successfully verified and committed to the audit trail by{' '}
-              <strong>{userName}</strong> ({currentRole.toUpperCase()}).
+            <p className="text-sm mt-1">
+              {isQueuedOffline
+                ? '⚠️ Offline: Decision queued locally. Will sync when connection returns.'
+                : `The decision was successfully verified and committed to the audit trail by ${userName} (${currentRole.toUpperCase()}).`}
             </p>
           </div>
         </div>
@@ -390,6 +411,7 @@ export function TaskDetail() {
 
           <div className="action-buttons">
             <button
+            type="button"
               className="btn-accept"
               onClick={() => handleDecision('accept')}
               disabled={actionLoading}

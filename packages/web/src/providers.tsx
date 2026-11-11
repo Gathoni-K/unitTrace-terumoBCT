@@ -3,6 +3,7 @@ import type { Role, DataClient } from '@workbench/shared';
 import type { Language, Theme } from './types';
 import { MockDataClient } from './mockDataClient';
 import { SupabaseDataClient } from './data/supabaseDataClient';
+import { syncQueue } from './api';
 
 export const AuthContext = createContext<{ role: Role | null; setRole: (role: Role) => void }>({ role: null, setRole: () => undefined });
 export function useAuth() { return useContext(AuthContext); }
@@ -14,12 +15,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export const ConnectionContext = createContext<{ state: 'online' | 'offline' | 'syncing' }>({ state: 'offline' });
 export function useConnection() { return useContext(ConnectionContext); }
 export function ConnectionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<'online' | 'offline'>(() => navigator.onLine ? 'online' : 'offline');
+  const [state, setState] = useState<'online' | 'offline' | 'syncing'>(() => navigator.onLine ? 'online' : 'offline');
   useEffect(() => {
-    const online = () => setState('online');
-    const offline = () => setState('offline');
-    window.addEventListener('online', online); window.addEventListener('offline', offline);
-    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
+    const handleOnline = async () => {
+      setState('syncing');
+      try {
+        await syncQueue();
+      } catch (err) {
+        console.error('[Offline Sync] Sync error on reconnect:', err);
+      } finally {
+        setState('online');
+      }
+    };
+    const handleOffline = () => setState('offline');
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
   return <ConnectionContext.Provider value={{ state }}>{children}</ConnectionContext.Provider>;
 }
