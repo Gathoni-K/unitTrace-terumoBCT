@@ -1,13 +1,15 @@
+/* ==========================================================================
+   packages/web/src/components/SignIn.tsx
+   ========================================================================== */
 import React, { useState } from 'react';
-import { useAuth } from '../providers';
+import { useAuth, useLanguage, ThemeToggle } from '../providers';
 import { useT } from '../i18n';
-import type { Language } from '../types';
 import './SignIn.css';
 
 export function SignIn({ onSignIn }: { onSignIn: () => void }) {
   const { setRole } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const [role, setLocalRole] = useState<'clerk' | 'supervisor'>('clerk');
-  const [language, setLanguage] = useState<Language>('en');
   const t = useT(language);
 
   const handleSignIn = (e: React.FormEvent) => {
@@ -28,25 +30,19 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
         <div className="signin-controls">
           <div className="lang-switcher">
             <button
-            type="button"
               className={`lang-btn ${language === 'en' ? 'active' : ''}`}
               onClick={() => setLanguage('en')}
             >
               English
             </button>
             <button
-            type="button"
               className={`lang-btn ${language === 'sw' ? 'active' : ''}`}
               onClick={() => setLanguage('sw')}
             >
               Kiswahili
             </button>
           </div>
-          <button
-          type="button"
-          className="theme-toggle-btn">
-            <span className="material-symbols-outlined">light_mode</span>
-          </button>
+          <ThemeToggle />
         </div>
       </div>
 
@@ -64,7 +60,6 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
 
         <div className="signin-brand">
           <div className="signin-logo-box">
-            {/* Using a text placeholder since we don't have the image asset yet */}
             <span className="logo-placeholder">UT</span>
           </div>
           <h1 className="font-headline-xl text-on-surface">UnitTrace</h1>
@@ -80,9 +75,9 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
         <form className="signin-form" onSubmit={handleSignIn}>
           {/* Role Selector */}
           <div className="form-group">
-            <span className="font-label-md text-on-surface mb-2 block">
-              Operational Role
-            </span>
+            <label className="font-label-md text-on-surface mb-2 block">
+              {t('operationalRole')}
+            </label>
             <div className="role-grid">
               <button
                 type="button"
@@ -97,7 +92,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
                         : 'text-on-surface font-label-md'
                     }
                   >
-                    Data Clerk
+                    {t('clerk')}
                   </span>
                   <span
                     className={`material-symbols-outlined ${role === 'clerk' ? 'text-primary' : 'text-outline-variant'}`}
@@ -125,7 +120,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
                         : 'text-on-surface font-label-md'
                     }
                   >
-                    Supervisor
+                    {t('supervisor')}
                   </span>
                   <span
                     className={`material-symbols-outlined ${role === 'supervisor' ? 'text-primary' : 'text-outline-variant'}`}
@@ -144,14 +139,14 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
 
           {/* Facility Dropdown */}
           <div className="form-group">
-            <label htmlFor="facility-select" className="font-label-md text-on-surface mb-1 block">
-              Facility / Centre
+            <label className="font-label-md text-on-surface mb-1 block">
+              {t('facilityLabel')}
             </label>
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">
                 local_hospital
               </span>
-              <select id="facility-select" className="input-field pl-10">
+              <select className="input-field pl-10">
                 <option>
                   Nairobi Regional Blood Transfusion Centre (RBTC-NBO)
                 </option>
@@ -171,7 +166,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Email Field */}
           <div className="form-group">
             <div className="flex justify-between items-center mb-1">
-              <label htmlFor="email-input" className="font-label-md text-on-surface">
+              <label className="font-label-md text-on-surface">
                 Institutional Email
               </label>
               <span className="font-label-sm text-primary">
@@ -181,11 +176,14 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">mail</span>
               <input
-                id="email-input"
                 type="email"
                 className="input-field pl-10"
-                defaultValue="sarah.achieng@bloodtransfusion.go.ke"
-                required
+                value={
+                  role === 'supervisor'
+                    ? 'j.mwangi@bloodtransfusion.go.ke'
+                    : 'sarah.achieng@bloodtransfusion.go.ke'
+                }
+                readOnly
               />
             </div>
           </div>
@@ -193,21 +191,20 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Password Field */}
           <div className="form-group">
             <div className="flex justify-between items-center mb-1">
-              <label htmlFor="password-input" className="font-label-md text-on-surface">
+              <label className="font-label-md text-on-surface">
                 Security Key / Password
               </label>
-              <button
-                type="button"
-                className="font-label-sm text-primary hover:underline bg-transparent border-none p-0 cursor-pointer"
+              <a
+                href="#"
+                className="font-label-sm text-primary hover:underline"
                 onClick={(e) => e.preventDefault()}
               >
                 Reset credentials?
-              </button>
+              </a>
             </div>
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">lock</span>
               <input
-                id="password-input"
                 type="password"
                 className="input-field pl-10 pr-10"
                 defaultValue="••••••••••••••••"
@@ -222,7 +219,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Submit Button */}
           <button type="submit" className="btn-primary w-full mt-2">
             <span className="material-symbols-outlined">login</span>
-            Sign in to UnitTrace
+            {t('signInButton')}
           </button>
 
           {/* Offline Notice */}
@@ -234,8 +231,8 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
               <strong className="text-on-surface">
                 Works offline after first sign-in:
               </strong>{' '}
-              Your records, scans, and safety reviews sync automatically
-              whenever connection returns.
+              Your records, scans, and discrepancy reviews sync automatically
+              whenever central connectivity returns.
             </p>
           </div>
         </form>
@@ -253,6 +250,13 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
             automatically. Every reconciliation and deferral flag requires
             qualified human verification.
           </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 text-on-surface-variant mt-2 text-xs">
+          <span className="material-symbols-outlined text-sm">translate</span>
+          <span>
+            EN / Kiswahili covers navigation and auth. Page content translation
+            is on the roadmap.
+          </span>
         </div>
         <div className="flex items-center justify-center gap-2 text-on-surface-variant mt-4">
           <span className="material-symbols-outlined text-sm">info</span>

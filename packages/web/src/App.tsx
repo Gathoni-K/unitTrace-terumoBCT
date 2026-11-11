@@ -1,5 +1,11 @@
+/* ==========================================================================
+   packages/web/src/App.tsx
+   ========================================================================== */
+
+import * as React from 'react';
 import {
   BrowserRouter,
+  Link,
   Navigate,
   Outlet,
   Route,
@@ -48,11 +54,11 @@ function SignInPage() {
   return <SignIn onSignIn={() => navigate('/')} />;
 }
 
-function RequireRole({ requiredRole }: { requiredRole?: 'supervisor' }) {
+function RequireRole({ role }: { role?: 'supervisor' }) {
   const { role: current } = useAuth();
   return !current ? (
     <Navigate to="/sign-in" replace />
-  ) : requiredRole && current !== requiredRole ? (
+  ) : role && current !== role ? (
     <Navigate to="/" replace />
   ) : (
     <Outlet />
@@ -82,12 +88,18 @@ export function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/queue" element={<RecordsToReview />} />
             <Route path="/tasks/:id" element={<TaskDetail />} />
-            <Route path="/audit" element={<Dashboard />} />
+            <Route path="/audit" element={<Page title="audit" />} />
             <Route path="/methods" element={<MethodResults />} />
-            <Route path="/settings" element={<Dashboard />} />
-            <Route path="/sms-simulator" element={<Dashboard />} />
-            <Route element={<RequireRole requiredRole="supervisor" />}>
-              <Route path="/approvals" element={<RecordsToReview />} />
+            <Route path="/settings" element={<Page title="settings" />} />
+            <Route
+              path="/sms-simulator"
+              element={<Page title="smsSimulator" />}
+            />
+            <Route element={<RequireRole role="supervisor" />}>
+              <Route
+                path="/approvals"
+                element={<RecordsToReview defaultTab="waiting_supervisor" />}
+              />
             </Route>
           </Route>
         </Route>

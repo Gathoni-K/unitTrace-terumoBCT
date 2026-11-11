@@ -189,8 +189,12 @@
 }
 .role-card.active {
   background: var(--surface-container-lowest);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    0 0 0 2px var(--primary),
+    var(--shadow-md);
+  position: relative;
 }
+
 .role-header {
   display: flex;
   align-items: center;
