@@ -220,8 +220,12 @@ Detailed methodology is documented in [`docs/aiMethodology.md`](docs/aiMethodolo
 
 | Name | Role | Country | Presenting Friday (in person / online) |
 |------|------|---------|-----------------------------------------|
-| Natasha Wambui Hinga | Full Stack Engineer | Kenya | In person |
 | Gathoni Karume | Data Engineer & Backend Engineer | Kenya | In person |
+| Natasha Hinga | Lead Frontend Engineer | Kenya | In person |
+| Charity Silah | Product Manager, Lead Researcher | Kenya | In person |
+| Tabitha Chiuri | Quality Assuarance and Testing Lead | Kenya | In person | 
+| Elizabeth Waceke | Assistant Researcher | Kenya | Virtual |
+
 
 ---
 
