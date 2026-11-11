@@ -27,8 +27,6 @@ export function TaskDetail() {
     currentRole === 'supervisor'
       ? 'Dr. Mwangi (Supervisor)'
       : 'Sarah Achieng (Data Clerk)';
-  const userId =
-    currentRole === 'supervisor' ? 'supervisor-mwangi' : 'clerk-sarah';
 
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +71,6 @@ export function TaskDetail() {
     try {
       const res = await submitDecisionWithOfflineSync(id, {
         action,
-        user_id: userId,
         actor: userName,
         user_role: currentRole,
         channel: 'web',
