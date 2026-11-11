@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/pages/MethodResults.tsx
-   ========================================================================== */
 import { useState } from 'react';
 import './MethodResults.css';
 
@@ -35,6 +32,7 @@ export function MethodResults() {
           </p>
         </div>
         <button
+        type="button"
           className={`toggle-switch ${isSmartMode ? 'active' : ''}`}
           onClick={() => setIsSmartMode(!isSmartMode)}
           aria-label="Toggle smart matching"
@@ -49,13 +47,13 @@ export function MethodResults() {
         <div className={`result-card ${!isSmartMode ? 'highlight' : ''}`}>
           <div className="result-header">
             <h3 className="font-headline-sm text-on-surface">
-              Rule-Based Baseline
+              Human Heuristic Baseline
             </h3>
             <span className="result-badge badge-warning">Rules Only</span>
           </div>
           <div className="metric-row">
             <span className="metric-label">Pairs detected</span>
-            <span className="metric-value">94,439</span>
+            <span className="metric-value">5,581</span>
           </div>
           <div className="metric-row">
             <span className="metric-label">True positives</span>
@@ -63,19 +61,19 @@ export function MethodResults() {
           </div>
           <div className="metric-row">
             <span className="metric-label">False positives</span>
-            <span className="metric-value text-error">93,987</span>
+            <span className="metric-value text-error">5,129</span>
           </div>
           <div className="metric-row border-top">
             <span className="metric-label font-bold text-on-surface">
               Precision
             </span>
-            <span className="metric-value text-error font-bold">0.48%</span>
+            <span className="metric-value text-error font-bold">8.10%</span>
           </div>
           <div className="metric-row">
             <span className="metric-label font-bold text-on-surface">
               Recall
             </span>
-            <span className="metric-value">100%</span>
+            <span className="metric-value">100.0%</span>
           </div>
         </div>
 

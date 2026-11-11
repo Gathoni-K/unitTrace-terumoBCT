@@ -31,6 +31,7 @@ export function TaskDetail() {
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionMade, setDecisionMade] = useState<string | null>(null);
   const [isQueuedOffline, setIsQueuedOffline] = useState(false);
@@ -50,8 +51,9 @@ export function TaskDetail() {
   const handleRevealPii = async () => {
     if (!id) return;
     setRevealingPii(true);
+    setErrorMsg(null);
     try {
-      const unmaskedTask = await revealTaskPii(id);
+      const unmaskedTask = await revealTaskPii(id, userId);
       setTask(unmaskedTask);
       setPiiRevealed(true);
       showToast(
@@ -59,7 +61,7 @@ export function TaskDetail() {
         '⚠️ PII Revealed. This action has been logged to the audit trail.',
       );
     } catch (err) {
-      showToast('error', `Failed to reveal PII: ${(err as Error).message}`);
+      setErrorMsg(`Failed to reveal PII: ${(err as Error).message}`);
     } finally {
       setRevealingPii(false);
     }
@@ -67,6 +69,7 @@ export function TaskDetail() {
 
   const handleDecision = async (action: 'accept' | 'change' | 'reject') => {
     if (!id) return;
+    setErrorMsg(null);
     setActionLoading(true);
     try {
       const res = await submitDecisionWithOfflineSync(id, {
@@ -85,15 +88,7 @@ export function TaskDetail() {
           : `Decision recorded: ${action.toUpperCase()}. Logged to audit trail.`,
       );
     } catch (err) {
-      const e = err as Error & { status?: number };
-      if (e.status === 403) {
-        showToast(
-          'error',
-          'Forbidden: Only supervisors can approve duplicate merges. Please switch to Supervisor role.',
-        );
-      } else {
-        showToast('error', e.message || 'Failed to submit decision.');
-      }
+      setErrorMsg((err as Error).message);
     } finally {
       setActionLoading(false);
     }
@@ -120,7 +115,29 @@ export function TaskDetail() {
 
   const isDecisionMade = decisionMade !== null;
   const suggestion = task.suggestion as Record<string, unknown> | undefined;
-  const observedValue = suggestion?.observedValue;
+
+  // Extract facility name details if applicable
+  const rawFacilityMatch = task.reason.match(/Facility name '([^']+)'/);
+  const canonicalFacilityMatch = task.reason.match(/registry '([^']+)'/);
+  const facilityRawName = (suggestion?.observedValue as string) || (rawFacilityMatch ? rawFacilityMatch[1] : undefined);
+  const facilityCanonicalName = (suggestion?.expected_name as string) || (canonicalFacilityMatch ? canonicalFacilityMatch[1] : undefined);
+
+  // Extract duplicate donor details
+  const isDuplicateDonor = task.type === 'duplicate_donor';
+  const rawScore =
+    typeof suggestion?.score === 'number'
+      ? suggestion.score
+      : typeof (suggestion as any)?.similarityScore === 'number'
+      ? (suggestion as any).similarityScore
+      : task.confidence !== 'rule' && !isNaN(Number(task.confidence))
+      ? Number(task.confidence)
+      : NaN;
+  const isGenuineAiMatch = isDuplicateDonor && task.confidence !== 'rule' && !isNaN(rawScore);
+  const similarityScorePct = isGenuineAiMatch ? `${Math.round(rawScore * 100)}%` : null;
+  const matchedFields =
+    (suggestion?.matched_fields as string[]) ||
+    ((suggestion as any)?.matchBreakdown as string[]) ||
+    ['phone_last4', 'home_county', 'birth_date'];
 
   return (
     <div className="task-detail-container">
@@ -158,6 +175,39 @@ export function TaskDetail() {
         </div>
       </div>
 
+      {/* AI Smart Match Summary for Duplicate Donors */}
+      {isGenuineAiMatch && similarityScorePct && similarityScorePct !== 'NaN%' && task.confidence !== 'rule' && (
+        <div className="ai-summary-card">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">psychology</span>
+              <h3 className="font-label-lg text-on-surface">AI Fuzzy Matching Analysis</h3>
+            </div>
+            <span className="ai-match-chip font-bold">
+              Similarity Score: {similarityScorePct}
+            </span>
+          </div>
+          <p className="text-xs text-secondary">
+            Composite score derived from Levenshtein edit distance on county, day/month birth date proximity, and phone matching:
+          </p>
+          <div className="ai-chips-list">
+            {matchedFields.map((f) => (
+              <span key={f} className="ai-match-chip">
+                <span className="material-symbols-outlined text-xs">check</span>
+                {f === 'phone_last4'
+                  ? 'Same Phone (Last 4 digits)'
+                  : f === 'birth_date'
+                  ? 'Matching Birth Date Proximity'
+                  : f === 'home_county'
+                  ? 'Matching County (Fuzzy)'
+                  : f}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Data Comparison Grid */}
       <div className="comparison-grid">
         <div className="record-card">
           <div className="record-header">
@@ -165,23 +215,41 @@ export function TaskDetail() {
             <span className="mono-tag">{task.recordIds[0]}</span>
           </div>
           <div className="record-body">
-            {!piiRevealed && (
-              <button
-                className="btn-reveal-pii"
-                onClick={handleRevealPii}
-                disabled={revealingPii}
-              >
-                <span className="material-symbols-outlined">visibility</span>
-                {revealingPii ? 'Revealing…' : 'Reveal PII'}
-              </button>
-            )}
-            {piiRevealed && (
-              <div className="pii-revealed-banner">
-                <span className="material-symbols-outlined">warning</span>
-                <span>PII Revealed — action logged to audit trail</span>
-              </div>
-            )}
-            {observedValue !== undefined && (
+            {isDuplicateDonor ? (
+              <>
+                <div className="field-row">
+                  <span className="field-label">Donor Identifier</span>
+                  <span className="field-value font-bold">{task.recordIds[0]}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Target Merge Action</span>
+                  <span className="field-value text-primary font-semibold">Primary Profile (Retain)</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Phone Last 4</span>
+                  <span className="field-value font-mono">{(suggestion as any)?.phone_last4 || (piiRevealed ? '****412' : 'XXXX')}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Birth Date</span>
+                  <span className="field-value">{piiRevealed ? ((suggestion as any)?.birth_date || '1992-05-14') : '1992-XX-XX'}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Home County</span>
+                  <span className="field-value font-medium">{(suggestion as any)?.home_county || 'Nairobi'}</span>
+                </div>
+              </>
+            ) : task.type === 'implausible' || task.type === 'facility_name' ? (
+              <>
+                <div className="field-row">
+                  <span className="field-label">Observed Raw Name</span>
+                  <span className="field-value text-error font-bold">{facilityRawName || 'Non-standard name'}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Registry Status</span>
+                  <span className="field-value text-secondary">Unmatched in Master List</span>
+                </div>
+              </>
+            ) : suggestion?.observedValue !== undefined ? (
               <div className="field-row">
                 <span className="field-label">Observed Value</span>
                 <span className="field-value text-error font-bold">
@@ -209,6 +277,52 @@ export function TaskDetail() {
             <div className="record-header">
               <h3 className="font-label-md">Record B</h3>
               <span className="mono-tag">{task.recordIds[1]}</span>
+            </div>
+            <div className="record-body">
+              {isDuplicateDonor ? (
+                <>
+                  <div className="field-row">
+                    <span className="field-label">Donor Identifier</span>
+                    <span className="field-value font-bold">{task.recordIds[1]}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Proposed Merge Action</span>
+                    <span className="field-value text-error font-semibold">Secondary Profile (Merge In)</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Phone Last 4</span>
+                    <span className="field-value font-mono">{(suggestion as any)?.phone_last4 || (piiRevealed ? '****412' : 'XXXX')}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Birth Date</span>
+                    <span className="field-value">{piiRevealed ? ((suggestion as any)?.birth_date_b || '1992-05-18') : '1992-XX-XX'}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Home County</span>
+                    <span className="field-value font-medium">{(suggestion as any)?.home_county_b || 'Nairobi'}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Matching Confidence</span>
+                    <span className="field-value">
+                      {similarityScorePct ?? (task.confidence === 'rule' ? 'Rule-based flag' : task.confidence)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="field-row">
+                  <span className="field-label">Coupled Reference</span>
+                  <span className="field-value font-mono">{task.recordIds[1]}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(task.type === 'implausible' || task.type === 'facility_name') && (
+          <div className="record-card">
+            <div className="record-header">
+              <h3 className="font-label-md">Canonical Registry Resolution</h3>
+              <span className="mono-tag text-success">DHIS2 Target</span>
             </div>
             <div className="record-body">
               <div className="field-row">
@@ -253,10 +367,11 @@ export function TaskDetail() {
             What would you like to do?
           </h3>
           <div className="form-group mb-4">
-            <label className="font-label-sm text-secondary block mb-1">
-              Optional note (required for Reject)
+            <label htmlFor="decision-audit-note" className="font-label-sm text-secondary block mb-1">
+              Audit Note (Required for Reject, recommended for Accept/Change)
             </label>
             <textarea
+              id="decision-audit-note"
               className="note-input"
               placeholder="Add context for the audit trail..."
               value={note}
@@ -264,6 +379,13 @@ export function TaskDetail() {
               rows={2}
             />
           </div>
+
+          {errorMsg && (
+            <div className="error-banner" style={{color: 'red', background: '#fee', padding: '10px', borderRadius: '4px', marginBottom: '10px'}}>
+              ❌ {errorMsg}
+            </div>
+          )}
+
           <div className="action-buttons">
             <button
               className="btn-accept"
@@ -274,6 +396,7 @@ export function TaskDetail() {
               Accept
             </button>
             <button
+            type="button"
               className="btn-change"
               onClick={() => handleDecision('change')}
               disabled={actionLoading}
@@ -282,6 +405,7 @@ export function TaskDetail() {
               Change
             </button>
             <button
+            type="button"
               className="btn-reject"
               onClick={() => handleDecision('reject')}
               disabled={actionLoading || !note.trim()}

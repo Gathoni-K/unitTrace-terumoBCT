@@ -8,20 +8,20 @@ UnitTrace uses a two-tier approach to duplicate donor detection: a naive rule-ba
 
 ## 1. Baseline Detector (`scripts/detectors/duplicateDonors.ts`)
 
-The naive baseline groups donor records solely by `phone_last4` (exact match). Any two donors sharing the same last four digits of their phone number are flagged as a potential duplicate pair.
+We compared the AI matcher against a sensible human heuristic: grouping donor records by exact match on `sex`, `home_county`, and `phone_last4`. Any two donors of the same sex in the same county who share the last four digits of their phone number are flagged as a potential duplicate pair.
 
 **Benchmark results** (measured via `scripts/measure-baseline.ts` on the Kenya dataset):
 
-| Metric    | Baseline                         |
-|-----------|----------------------------------|
-| Pairs detected | 94,439                      |
-| True positives (TP) | 452                   |
-| False positives (FP) | 93,987               |
-| **Precision** | **0.48%**                |
-| Recall    | 100%                             |
-| F1 score  | 0.0095                           |
+| Metric    | Sensible Human Baseline (`sex` + `county` + `phone_last4`) |
+|-----------|----------------------------------------------------------|
+| Pairs detected | 5,581                                               |
+| True positives (TP) | 452                                            |
+| False positives (FP) | 5,129                                          |
+| **Precision** | **8.10%**                                            |
+| Recall    | 100.0%                                                   |
+| F1 score  | 0.1498                                                   |
 
-The baseline floods reviewers with false positives — nearly every flag is wrong. This is the problem the AI matcher solves.
+Even with sex and county filtering, the human heuristic baseline produces over 5,100 false positives because random 4-digit phone collisions frequently occur among donors residing in the same county. The AI fuzzy matcher eliminates 5,127 of those false positives by scoring multi-attribute similarity (Levenshtein distance on county and date proximity).
 
 ---
 

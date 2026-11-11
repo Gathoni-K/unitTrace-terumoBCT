@@ -5,16 +5,7 @@
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-  'https://unittrace-terumobct.onrender.com';
-
-function getHeaders(): HeadersInit {
-  return {
-    'Content-Type': 'application/json',
-    'x-user-role': localStorage.getItem('userRole') || 'clerk',
-  };
-}
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://unittrace-terumobct.onrender.com';
 
 export interface TaskRecord {
   id: string;
@@ -190,10 +181,18 @@ export async function getTask(id: string): Promise<TaskRecord> {
   return res.json();
 }
 
-export async function revealTaskPii(id: string): Promise<TaskRecord> {
+export async function revealTaskPii(id: string, userId?: string): Promise<TaskRecord> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (userId) {
+    headers['x-user-id'] = userId;
+  }
+
   const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers,
+    body: JSON.stringify({ user_id: userId }),
   });
   if (!res.ok) throw new Error(`Failed to reveal PII: ${res.status}`);
   return res.json();
@@ -312,29 +311,18 @@ export async function syncQueue(): Promise<{ synced: number; failed: number }> {
       }
       synced++;
     } catch (err) {
-      console.error(
-        `[Offline Sync] Failed to sync decision for task ${item.taskId}:`,
-        err,
-      );
-      failed++;
+      // If already resolved (e.g. concurrent review or sync), clear from local queue to prevent duplicate processing
+      if ((err as Error).message.includes('already resolved')) {
+        if (item.id !== undefined) {
+          await db.delete(STORE_NAME, item.id);
+        }
+        synced++;
+      } else {
+        console.error(`[Offline Sync] Failed to sync decision for task ${item.taskId}:`, err);
+        failed++;
+      }
     }
   }
 
   return { synced, failed };
-}
-
-// Global automatic synchronization on 'online' event
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    console.log(
-      '[Offline Sync] Connection restored, processing queued decisions...',
-    );
-    syncQueue().then(({ synced }) => {
-      if (synced > 0) {
-        console.log(
-          `[Offline Sync] Successfully synced ${synced} decision(s) to server.`,
-        );
-      }
-    });
-  });
 }

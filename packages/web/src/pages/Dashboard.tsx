@@ -73,6 +73,16 @@ export function Dashboard() {
   const totalOpen = Math.max(0, totalDefects - totalResolved);
   const waitingSupervisor = Math.max(0, duplicateDonors - (breakdownMap['duplicate_donor']?.resolved ?? 0));
 
+  const totalRecordsChecked = useMemo(() => {
+    if (metrics?.beforeValue && metrics.beforeValue > 0) {
+      return metrics.beforeValue;
+    }
+    if (metrics?.taskBreakdown && metrics.taskBreakdown.length > 0) {
+      return metrics.taskBreakdown.reduce((sum, item) => sum + (item.beforeOpen || 0), 0);
+    }
+    return totalDefects;
+  }, [metrics, totalDefects]);
+
   return (
     <div className="dashboard-container">
       {/* Safeguard Ribbon */}
@@ -158,7 +168,9 @@ export function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-on-surface">43,363</div>
+              <div className="font-headline-xl text-on-surface">
+                {loading ? '…' : totalRecordsChecked.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
                 Donors &amp; transfers across national network
               </p>
@@ -433,7 +445,7 @@ export function Dashboard() {
                       key={entry.id}
                       initials={initials}
                       name={actorName}
-                      role={roleLabel}
+                      userRole={roleLabel}
                       time={dateStr}
                       channel={entry.channel}
                       text={
@@ -462,7 +474,7 @@ export function Dashboard() {
                   <ActivityItem
                     initials="SA"
                     name="Sarah Achieng"
-                    role="Data Clerk"
+                    userRole="Data Clerk"
                     time="12m ago"
                     channel="web"
                     text={
@@ -478,7 +490,7 @@ export function Dashboard() {
                   <ActivityItem
                     initials="AT"
                     name="+254711000000"
-                    role="Field Clerk"
+                    userRole="Field Clerk"
                     time="24m ago"
                     channel="sms"
                     text={
@@ -494,7 +506,7 @@ export function Dashboard() {
                   <ActivityItem
                     initials="DM"
                     name="Dr. Mwangi"
-                    role="Supervisor"
+                    userRole="Supervisor"
                     time="1h ago"
                     channel="web"
                     text={
@@ -576,7 +588,7 @@ export function Dashboard() {
                 </span>{' '}
                 Audit Trail: <strong>Immutable Append-Only</strong>
               </span>
-              <button className="text-primary hover:underline font-semibold flex items-center gap-1">
+              <button type="button" className="text-primary hover:underline font-semibold flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">
                   refresh
                 </span>{' '}
@@ -659,7 +671,7 @@ function ProgressItem({
 function ActivityItem({
   initials,
   name,
-  role,
+  userRole,
   time,
   text,
   tag,
@@ -692,7 +704,7 @@ function ActivityItem({
             <span className="font-label-md text-on-surface font-semibold">
               {name}
             </span>
-            <span className="role-tag">{role}</span>
+            <span className="role-tag">{userRole}</span>
 
             {isSms && (
               <span className="channel-badge channel-sms">

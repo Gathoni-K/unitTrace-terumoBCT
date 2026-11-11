@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/components/SignIn.tsx
-   ========================================================================== */
 import React, { useState } from 'react';
 import { useAuth } from '../providers';
 import { useT } from '../i18n';
@@ -31,19 +28,23 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
         <div className="signin-controls">
           <div className="lang-switcher">
             <button
+            type="button"
               className={`lang-btn ${language === 'en' ? 'active' : ''}`}
               onClick={() => setLanguage('en')}
             >
               English
             </button>
             <button
+            type="button"
               className={`lang-btn ${language === 'sw' ? 'active' : ''}`}
               onClick={() => setLanguage('sw')}
             >
               Kiswahili
             </button>
           </div>
-          <button className="theme-toggle-btn">
+          <button
+          type="button"
+          className="theme-toggle-btn">
             <span className="material-symbols-outlined">light_mode</span>
           </button>
         </div>
@@ -79,9 +80,9 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
         <form className="signin-form" onSubmit={handleSignIn}>
           {/* Role Selector */}
           <div className="form-group">
-            <label className="font-label-md text-on-surface mb-2 block">
+            <span className="font-label-md text-on-surface mb-2 block">
               Operational Role
-            </label>
+            </span>
             <div className="role-grid">
               <button
                 type="button"
@@ -143,14 +144,14 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
 
           {/* Facility Dropdown */}
           <div className="form-group">
-            <label className="font-label-md text-on-surface mb-1 block">
+            <label htmlFor="facility-select" className="font-label-md text-on-surface mb-1 block">
               Facility / Centre
             </label>
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">
                 local_hospital
               </span>
-              <select className="input-field pl-10">
+              <select id="facility-select" className="input-field pl-10">
                 <option>
                   Nairobi Regional Blood Transfusion Centre (RBTC-NBO)
                 </option>
@@ -170,7 +171,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Email Field */}
           <div className="form-group">
             <div className="flex justify-between items-center mb-1">
-              <label className="font-label-md text-on-surface">
+              <label htmlFor="email-input" className="font-label-md text-on-surface">
                 Institutional Email
               </label>
               <span className="font-label-sm text-primary">
@@ -180,6 +181,7 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">mail</span>
               <input
+                id="email-input"
                 type="email"
                 className="input-field pl-10"
                 defaultValue="sarah.achieng@bloodtransfusion.go.ke"
@@ -191,20 +193,21 @@ export function SignIn({ onSignIn }: { onSignIn: () => void }) {
           {/* Password Field */}
           <div className="form-group">
             <div className="flex justify-between items-center mb-1">
-              <label className="font-label-md text-on-surface">
+              <label htmlFor="password-input" className="font-label-md text-on-surface">
                 Security Key / Password
               </label>
-              <a
-                href="#"
-                className="font-label-sm text-primary hover:underline"
+              <button
+                type="button"
+                className="font-label-sm text-primary hover:underline bg-transparent border-none p-0 cursor-pointer"
                 onClick={(e) => e.preventDefault()}
               >
                 Reset credentials?
-              </a>
+              </button>
             </div>
             <div className="input-wrapper">
               <span className="material-symbols-outlined input-icon">lock</span>
               <input
+                id="password-input"
                 type="password"
                 className="input-field pl-10 pr-10"
                 defaultValue="••••••••••••••••"

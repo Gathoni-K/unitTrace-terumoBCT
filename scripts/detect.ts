@@ -99,9 +99,25 @@ async function main(): Promise<void> {
 
   for (const detector of detectors) {
     console.log(`Running detector ${detector.name}...`);
-    const findings = await detector.fn(pool, config);
-    console.log(`  -> ${detector.name} produced ${findings.length} findings.`);
-    allFindings.push(...findings);
+    try {
+      const findings = await detector.fn(pool, config);
+      console.log(`  -> ${detector.name} produced ${findings.length} findings.`);
+      allFindings.push(...findings);
+    } catch (err) {
+      if (detector.name === 'fuzzyDuplicates') {
+        console.warn(`⚠️ fuzzyDuplicates threw an exception: ${(err as Error).message}`);
+        console.warn('⚠️ Gracefully falling back to duplicateDonors (human heuristic baseline)...');
+        try {
+          const fallbackFindings = await runDuplicateDonors(pool, config);
+          console.log(`  -> duplicateDonors (fallback) produced ${fallbackFindings.length} findings.`);
+          allFindings.push(...fallbackFindings);
+        } catch (fallbackErr) {
+          console.error('Failed to run fallback duplicate detector:', fallbackErr);
+        }
+      } else {
+        console.warn(`⚠️ Detector ${detector.name} failed: ${(err as Error).message}. Skipping to next detector.`);
+      }
+    }
   }
 
   console.log(`\nPersisting ${allFindings.length} findings into public.tasks...`);
