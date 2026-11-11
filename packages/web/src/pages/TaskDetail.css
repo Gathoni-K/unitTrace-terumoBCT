@@ -37,6 +37,67 @@
   flex-wrap: wrap;
 }
 
+/* User Role Indicator */
+.reviewer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface-container-high);
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+/* PII Reveal Banner and Container */
+.pii-revealed-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: var(--border-radius-lg);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pii-masked-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface-container-low);
+  border-radius: var(--border-radius-lg);
+  border: 1px dashed var(--outline-variant, #cbd5e1);
+}
+
+.btn-reveal-pii {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-reveal-pii:hover:not(:disabled) {
+  background: var(--primary);
+  color: #ffffff;
+}
+.btn-reveal-pii:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Reason Box */
 .reason-box {
   display: flex;
@@ -45,6 +106,36 @@
   background: var(--surface-container-low);
   border-left: 4px solid var(--primary);
   border-radius: var(--border-radius-lg);
+}
+
+/* AI Match Feature Styles */
+.ai-summary-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--surface-container);
+  border-radius: var(--border-radius-xl);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-chips-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-match-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* Comparison Grid */
@@ -115,6 +206,19 @@
   border-radius: var(--border-radius-xl);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--surface-container);
+}
+
+.role-restriction-notice {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: var(--border-radius-lg);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .note-input {

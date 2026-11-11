@@ -346,3 +346,68 @@ export async function submitDecision(
   }
 }
 
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  user_id: string | null;
+  action: string;
+  task_id: string | null;
+  channel: string | null;
+  user_role: string | null;
+  ip_address: string | null;
+  actor?: string | null;
+}
+
+export async function listAuditLogs(
+  pool: Pool | PoolClient,
+  limit = 20,
+): Promise<AuditLogEntry[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const res = await pool.query<{
+    id: string | number;
+    at: string | Date;
+    user_id: string | null;
+    action: string;
+    task_id: string | number | null;
+    after_value: unknown;
+  }>(
+    `select
+       id,
+       at,
+       user_id::text as user_id,
+       action,
+       task_id,
+       after_value
+     from public.audit_log
+     order by at desc, id desc
+     limit $1`,
+    [safeLimit],
+  );
+
+  return res.rows.map((row) => {
+    let afterObj: Record<string, unknown> = {};
+    if (typeof row.after_value === 'object' && row.after_value !== null) {
+      afterObj = row.after_value as Record<string, unknown>;
+    } else if (typeof row.after_value === 'string') {
+      try {
+        afterObj = JSON.parse(row.after_value);
+      } catch {
+        afterObj = {};
+      }
+    }
+
+    return {
+      id: String(row.id),
+      timestamp: row.at instanceof Date ? row.at.toISOString() : String(row.at),
+      user_id: row.user_id ?? null,
+      action: row.action,
+      task_id: row.task_id != null ? String(row.task_id) : null,
+      channel: typeof afterObj.channel === 'string' ? afterObj.channel : null,
+      user_role: typeof afterObj.user_role === 'string' ? afterObj.user_role : null,
+      ip_address: typeof afterObj.ip_address === 'string' ? afterObj.ip_address : null,
+      actor: typeof afterObj.actor === 'string' ? afterObj.actor : null,
+    };
+  });
+}
+
+
