@@ -140,9 +140,9 @@ export function createApiHandler(pool: Pool) {
         let userId: string | undefined;
         if (method === 'POST') {
           const body = await readRequestBody(req);
-          userId = (body.user_id as string) ?? undefined;
+          userId = (body.user_id as string) || (req.headers['x-user-id'] as string) || undefined;
         } else {
-          userId = parsedUrl.searchParams.get('user_id') ?? undefined;
+          userId = parsedUrl.searchParams.get('user_id') || (req.headers['x-user-id'] as string) || undefined;
         }
 
         try {

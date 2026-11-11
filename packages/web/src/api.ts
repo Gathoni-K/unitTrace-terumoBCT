@@ -173,8 +173,19 @@ export async function getTask(id: string): Promise<TaskRecord> {
   return res.json();
 }
 
-export async function revealTaskPii(id: string): Promise<TaskRecord> {
-  const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`);
+export async function revealTaskPii(id: string, userId?: string): Promise<TaskRecord> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (userId) {
+    headers['x-user-id'] = userId;
+  }
+
+  const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ user_id: userId }),
+  });
   if (!res.ok) throw new Error(`Failed to reveal PII: ${res.status}`);
   return res.json();
 }
