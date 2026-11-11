@@ -2,7 +2,7 @@
    packages/web/src/pages/Dashboard.tsx
    ========================================================================== */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   getMetrics,
   getAuditLogs,
@@ -13,6 +13,7 @@ import { useAuth } from '../providers';
 import './Dashboard.css';
 
 export function Dashboard() {
+  const location = useLocation();
   const { role, setRole } = useAuth();
   const userRole = role === 'supervisor' ? 'supervisor' : 'clerk';
   const userName = userRole === 'supervisor' ? 'Dr. Mwangi' : 'Sarah';
@@ -38,7 +39,7 @@ export function Dashboard() {
       .catch((err) => {
         console.warn('Audit logs API fallback:', err);
       });
-  }, []);
+  }, [location.pathname]);
 
   const handleRefreshAudit = async () => {
     setRefreshingAudit(true);
