@@ -1,0 +1,167 @@
+/* ==========================================================================
+   packages/web/src/pages/MethodResults.css
+   ========================================================================== */
+
+.methods-container {
+  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.methods-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* Toggle Card */
+.toggle-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: var(--surface-container-lowest);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--surface-container);
+  gap: 16px;
+}
+.toggle-info {
+  flex: 1;
+}
+.toggle-switch {
+  width: 56px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--surface-container-high);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-switch.active {
+  background: var(--primary-container);
+}
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s;
+}
+.toggle-switch.active .toggle-knob {
+  transform: translateX(24px);
+}
+
+/* Results Grid */
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.result-card {
+  padding: 20px;
+  background: var(--surface-container-lowest);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--surface-container);
+  transition: all 0.2s;
+}
+.result-card.highlight {
+  border-color: var(--surface-container-high);
+  box-shadow: var(--shadow-md);
+}
+.result-card.highlight-primary {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(13, 92, 99, 0.1);
+}
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--surface-container);
+}
+.result-badge {
+  padding: 3px 10px;
+  border-radius: var(--border-radius-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-warning {
+  background: var(--warning-soft, #fef3c7);
+  color: #b45309;
+}
+.badge-success {
+  background: var(--success-soft, #dcfce7);
+  color: #15803d;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.metric-row.border-top {
+  border-top: 1px solid var(--surface-container);
+  margin-top: 8px;
+  padding-top: 12px;
+}
+.metric-label {
+  color: var(--secondary);
+}
+.metric-value {
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+/* Callouts */
+.callout-box {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-container-low);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--border-radius-lg);
+}
+.fallback-box {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: var(--warning-soft, #fef3c7);
+  color: #b45309;
+  border-radius: var(--border-radius-xl);
+  border: 1px solid #fcd34d;
+}
+
+.text-success {
+  color: #15803d;
+}
+.text-error {
+  color: var(--error);
+}
+.text-warning {
+  color: #b45309;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+  .toggle-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

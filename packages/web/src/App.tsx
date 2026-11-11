@@ -26,6 +26,7 @@ import { AppShell } from './components/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { RecordsToReview } from './pages/RecordsToReview';
 import { TaskDetail } from './pages/TaskDetail';
+import { MethodResults } from './pages/MethodResults';
 import './styles.css';
 
 const routes = [
@@ -88,7 +89,7 @@ export function App() {
             <Route path="/queue" element={<RecordsToReview />} />
             <Route path="/tasks/:id" element={<TaskDetail />} />
             <Route path="/audit" element={<Page title="audit" />} />
-            <Route path="/methods" element={<Page title="methods" />} />
+            <Route path="/methods" element={<MethodResults />} />
             <Route path="/settings" element={<Page title="settings" />} />
             <Route
               path="/sms-simulator"
