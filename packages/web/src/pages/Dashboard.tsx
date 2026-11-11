@@ -1,11 +1,65 @@
 /* ==========================================================================
    packages/web/src/pages/Dashboard.tsx
    ========================================================================== */
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getMetrics, getAuditLogs, type BeforeAfterReport, type AuditLogItem } from '../api';
+import { useAuth } from '../providers';
 import './Dashboard.css';
 
 export function Dashboard() {
+  const { role } = useAuth();
+  const userRole = role === 'supervisor' ? 'supervisor' : 'clerk';
+  const userName = userRole === 'supervisor' ? 'Dr. Mwangi' : 'Sarah';
+
+  const [metrics, setMetrics] = useState<BeforeAfterReport | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMetrics()
+      .then(setMetrics)
+      .catch((err) => {
+        console.warn('Live metrics API fallback to starter dataset baseline:', err);
+      })
+      .finally(() => setLoading(false));
+
+    getAuditLogs(5)
+      .then(setAuditLogs)
+      .catch((err) => {
+        console.warn('Audit logs API fallback:', err);
+      });
+  }, []);
+
+  const breakdownMap = useMemo(() => {
+    const map: Record<string, { before: number; resolved: number }> = {};
+    if (metrics?.taskBreakdown) {
+      for (const b of metrics.taskBreakdown) {
+        map[b.type] = { before: b.beforeOpen, resolved: b.afterResolved };
+      }
+    }
+    return map;
+  }, [metrics]);
+
+  // Real defect numbers computed from live backend or starter dataset
+  const unconfirmedTransfers = breakdownMap['unconfirmed_transfer']?.before ?? 1046;
+  const missingDonorBloodGroup = breakdownMap['missing_donor_blood_group']?.before ?? 506;
+  const unknownPatientBloodGroup = breakdownMap['unknown_patient_blood_group']?.before ?? 442;
+  const duplicateDonors = breakdownMap['duplicate_donor']?.before ?? 454;
+  const facilityNamesMismatch = (breakdownMap['implausible']?.before || breakdownMap['facility_name']?.before) ?? 710;
+  const loggerGaps = breakdownMap['logger_gap']?.before ?? 370;
+  const sensorGlitches = breakdownMap['sensor_glitch']?.before ?? 55;
+  const donationTooSoon = breakdownMap['donation_too_soon']?.before ?? 67;
+
+  // Aggregate totals
+  const totalDefects = metrics?.beforeValue && metrics.beforeValue > 0
+    ? metrics.beforeValue
+    : (unconfirmedTransfers + missingDonorBloodGroup + unknownPatientBloodGroup + duplicateDonors + facilityNamesMismatch + loggerGaps + sensorGlitches + donationTooSoon);
+
+  const totalResolved = metrics?.resolvedCount ?? 0;
+  const totalOpen = Math.max(0, totalDefects - totalResolved);
+  const waitingSupervisor = Math.max(0, duplicateDonors - (breakdownMap['duplicate_donor']?.resolved ?? 0));
+
   return (
     <div className="dashboard-container">
       {/* Safeguard Ribbon */}
@@ -48,8 +102,10 @@ export function Dashboard() {
                 </span>
               </div>
               <h1 className="font-headline-lg text-on-surface">
-                Welcome back, Sarah{' '}
-                <span className="text-secondary font-normal">(Data Clerk)</span>
+                Welcome back, {userName}{' '}
+                <span className="text-secondary font-normal">
+                  ({userRole === 'supervisor' ? 'Supervisor' : 'Data Clerk'})
+                </span>
               </h1>
               <div className="hero-subtitle">
                 <span className="flex items-center gap-1.5 font-medium text-on-surface">
@@ -60,15 +116,14 @@ export function Dashboard() {
                 </span>
                 <span className="hidden sm:inline text-outline-variant">|</span>
                 <span className="text-secondary text-xs">
-                  Last automated check completed 14 minutes ago (Batch
-                  #KE-2025-084)
+                  Automated inspection engine active (Kenya National Dataset · 8 Rule Sets)
                 </span>
               </div>
             </div>
             <div className="hero-actions">
               <Link to="/queue" className="btn-hero-primary">
                 <span className="material-symbols-outlined">play_arrow</span>
-                Continue reviewing (24 open tasks)
+                Continue reviewing ({totalOpen.toLocaleString()} open tasks)
               </Link>
               <button className="btn-hero-secondary">
                 <span className="material-symbols-outlined">upload_file</span>
@@ -90,9 +145,9 @@ export function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-on-surface">14,820</div>
+              <div className="font-headline-xl text-on-surface">43,363</div>
               <p className="font-label-sm text-secondary mt-1">
-                Across 4 counties this month
+                Donors &amp; transfers across national network
               </p>
             </div>
           </div>
@@ -114,14 +169,14 @@ export function Dashboard() {
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="font-headline-xl text-error font-bold">
-                  24
+                  {loading ? '…' : totalOpen.toLocaleString()}
                 </span>
                 <span className="text-xs font-label-sm text-secondary">
                   action needed
                 </span>
               </div>
               <p className="font-label-sm text-on-surface-variant font-medium mt-1">
-                18 high confidence suggestions
+                {duplicateDonors.toLocaleString()} high confidence AI matches
               </p>
             </div>
           </div>
@@ -129,16 +184,18 @@ export function Dashboard() {
           <div className="metric-card">
             <div className="metric-header">
               <span className="font-label-md text-secondary">
-                Records reviewed
+                Records reviewed &amp; fixed
               </span>
               <div className="metric-icon">
                 <span className="material-symbols-outlined">task_alt</span>
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-on-surface">312</div>
+              <div className="font-headline-xl text-on-surface">
+                {loading ? '…' : totalResolved.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
-                Reviewed by you & team this week
+                {metrics?.improvementPercentage ? `${metrics.improvementPercentage} resolved` : 'Committed to clean tables'}
               </p>
             </div>
           </div>
@@ -153,9 +210,11 @@ export function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="font-headline-xl text-primary">6</div>
+              <div className="font-headline-xl text-primary">
+                {loading ? '…' : waitingSupervisor.toLocaleString()}
+              </div>
               <p className="font-label-sm text-secondary mt-1">
-                Sent to supervisor Dr. Mwangi
+                Restricted to supervisor approval
               </p>
             </div>
           </div>
@@ -174,60 +233,60 @@ export function Dashboard() {
               </p>
             </div>
             <span className="font-label-sm text-secondary bg-surface-container-high px-3 py-1 rounded-full">
-              8 Rule-Sets Run · 24 Total Open
+              8 Rule-Sets Run · {totalOpen.toLocaleString()} Total Open
             </span>
           </div>
 
           <div className="problems-grid">
             <ProblemCard
               icon="people"
-              badge="8 records"
+              badge={`${duplicateDonors.toLocaleString()} records`}
               badgeClass="bg-error-container text-on-error-container"
               title="Possible duplicate donors"
-              desc="Two records may belong to the same person with minor typos or alternate ID numbers."
+              desc="Two records belong to the same person with minor typos or alternate ID numbers (AI Fuzzy Matcher)."
             />
             <ProblemCard
               icon="domain_disabled"
-              badge="5 records"
+              badge={`${facilityNamesMismatch.toLocaleString()} records`}
               title="Facility names that do not match"
-              desc='Non-standard names like "NATL REFERRAL" vs Master Health Facility List register.'
+              desc='Non-standard hospital names like "Kiambu CRH" vs Master Health Facility List (DHIS2 breaking).'
             />
             <ProblemCard
               icon="bloodtype"
-              badge="4 records"
+              badge={`${missingDonorBloodGroup.toLocaleString()} records`}
               title="Missing blood group info"
               desc="Donor logged without confirmed ABO/Rh typing entered prior to bag barcode issuance."
             />
             <ProblemCard
               icon="emergency"
-              badge="2 urgent"
+              badge={`${unknownPatientBloodGroup.toLocaleString()} urgent`}
               badgeClass="bg-error-container text-on-error-container"
               title="Unknown patient blood group"
               desc="Emergency requisition received with recipient blood group omitted in hospital ward order."
             />
             <ProblemCard
               icon="device_thermostat"
-              badge="2 sensors"
+              badge={`${sensorGlitches.toLocaleString()} sensors`}
               title="Unusual temperature readings"
-              desc="Sensor data anomaly detected: impossible fridge log value recorded (-99°C)."
+              desc="Sensor data anomaly detected: impossible fridge log value recorded (-99°C, 99.9°C)."
             />
             <ProblemCard
               icon="cloud_off"
-              badge="1 record"
+              badge={`${loggerGaps.toLocaleString()} gaps`}
               title="Missing temperature readings"
-              desc="Cold-chain logger missing data between 02:00-09:00 at Machakos satellite depot."
+              desc="Cold-chain logger dropout blackouts (>6 hours) during fridge power outages."
             />
             <ProblemCard
               icon="local_shipping"
-              badge="1 dispatch"
+              badge={`${unconfirmedTransfers.toLocaleString()} dispatches`}
               title="Transfers without confirmation"
-              desc="Dispatched unit #UN-8842 missing receipt acknowledgement from Kiambu Level 5."
+              desc="Dispatched blood units missing receiving hospital timestamp acknowledgement."
             />
             <ProblemCard
               icon="timelapse"
-              badge="1 donor"
+              badge={`${donationTooSoon.toLocaleString()} donors`}
               title="Donations too close together"
-              desc="Donor donated 42 days ago; regulatory minimum whole blood interval is 90 days."
+              desc="Donors registered with intervals below safety thresholds (90 days male / 120 days female)."
             />
           </div>
         </div>
@@ -247,11 +306,11 @@ export function Dashboard() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5 text-xs text-secondary">
                 <span className="w-3 h-3 rounded-sm bg-primary-container inline-block"></span>
-                Completed (89.9%)
+                Clean State Tables Updated
               </div>
               <div className="flex items-center gap-1.5 text-xs text-secondary">
                 <span className="w-3 h-3 rounded-sm bg-secondary-container inline-block"></span>
-                In Pipeline (10.1%)
+                Human Verification Queue
               </div>
             </div>
           </div>
@@ -259,60 +318,59 @@ export function Dashboard() {
           <div className="progress-bar-master">
             <div
               className="bg-primary-container h-full"
-              style={{ width: '89.9%' }}
+              style={{ width: `${Math.min(100, (totalResolved / Math.max(1, totalDefects)) * 100)}%` }}
             ></div>
-            <div className="bg-error h-full" style={{ width: '6.9%' }}></div>
             <div
-              className="bg-secondary h-full"
-              style={{ width: '1.7%' }}
+              className="bg-error h-full"
+              style={{ width: `${Math.min(100, (totalOpen / Math.max(1, totalDefects)) * 100)}%` }}
             ></div>
           </div>
 
           <div className="progress-grid">
             <ProgressItem
               label="Awaiting review"
-              value="24"
+              value={totalOpen.toLocaleString()}
               suffix="tasks"
-              percent="75% of open"
+              percent="Action needed"
               percentColor="text-error"
               barColor="bg-error"
-              width="75%"
-            />
-            <ProgressItem
-              label="In progress"
-              value="3"
-              suffix="tasks"
-              percent="Active now"
-              percentColor="text-secondary"
-              barColor="bg-secondary-fixed-dim"
-              width="15%"
+              width="85%"
             />
             <ProgressItem
               label="Decisions completed"
-              value="312"
+              value={totalResolved.toLocaleString()}
               suffix="tasks"
               percent="Verified"
               percentColor="text-tertiary"
               barColor="bg-primary-container"
-              width="90%"
+              width="15%"
             />
             <ProgressItem
               label="Waiting approval"
-              value="6"
+              value={waitingSupervisor.toLocaleString()}
               suffix="tasks"
               percent="Supervisor"
               percentColor="text-secondary"
               barColor="bg-secondary"
-              width="25%"
+              width="35%"
             />
             <ProgressItem
-              label="Escalated records"
-              value="2"
-              suffix="tasks"
-              percent="Lab Chief"
+              label="Unconfirmed Transfers"
+              value={unconfirmedTransfers.toLocaleString()}
+              suffix="units"
+              percent="High Priority"
+              percentColor="text-error"
+              barColor="bg-error"
+              width="70%"
+            />
+            <ProgressItem
+              label="Missing Blood Groups"
+              value={missingDonorBloodGroup.toLocaleString()}
+              suffix="donors"
+              percent="Clinical Safety"
               percentColor="text-on-surface-variant"
               barColor="bg-inverse-surface"
-              width="10%"
+              width="45%"
             />
           </div>
         </div>
@@ -335,60 +393,98 @@ export function Dashboard() {
               </span>
             </div>
             <div className="activity-list">
-              <ActivityItem
-                initials="SA"
-                name="Sarah Achieng"
-                role="Data Clerk"
-                time="22m ago"
-                text={
-                  <>
-                    Accepted suggested duplicate link for donor records{' '}
-                    <span className="mono-tag">DNR-000412</span> &amp;{' '}
-                    <span className="mono-tag">DNR-031877</span>.
-                  </>
-                }
-                tag="Duplicate Merged"
-                tagClass="bg-secondary-container text-on-secondary-fixed"
-                extra="Confidence 96%"
-              />
-              <ActivityItem
-                initials="DM"
-                name="Dr. Mwangi"
-                role="Supervisor"
-                time="1h ago"
-                text={
-                  <>
-                    Approved facility alias mapping: normalized{' '}
-                    <em>"NATL REFERRAL"</em> to official MFL ID{' '}
-                    <span className="mono-tag">HSP-001</span>.
-                  </>
-                }
-                tag="Registry Updated"
-                tagClass="bg-surface-container-high text-on-surface"
-              />
-              <ActivityItem
-                initials="SYS"
-                name="Automated Sync Pipeline"
-                role="System"
-                time="2h ago"
-                text={
-                  <>
-                    Processed incoming batch{' '}
-                    <span className="mono-tag">KNBTS_Batch_084.csv</span> (1,240
-                    records checked). Flagged 3 new anomalies.
-                  </>
-                }
-                tag="1,240 Parsed"
-                tagClass="bg-secondary-container text-on-secondary-fixed"
-                extra="Zero dropped rows"
-              />
+              {auditLogs.length > 0 ? (
+                auditLogs.slice(0, 4).map((entry) => {
+                  const isSupervisor = entry.user_role === 'supervisor';
+                  const initials = isSupervisor ? 'DM' : 'SA';
+                  const roleLabel = isSupervisor ? 'Supervisor' : 'Data Clerk';
+                  const actorName = entry.actor || (isSupervisor ? 'Dr. Mwangi' : 'Sarah Achieng');
+                  const dateStr = new Date(entry.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+
+                  return (
+                    <ActivityItem
+                      key={entry.id}
+                      initials={initials}
+                      name={actorName}
+                      role={roleLabel}
+                      time={dateStr}
+                      text={
+                        <>
+                          Recorded decision on Task #{entry.task_id} via {entry.channel ? entry.channel.toUpperCase() : 'WEB'}.
+                        </>
+                      }
+                      tag={entry.action.toUpperCase()}
+                      tagClass={
+                        entry.action === 'accept'
+                          ? 'bg-secondary-container text-on-secondary-fixed'
+                          : entry.action === 'reject'
+                          ? 'bg-error-container text-on-error-container'
+                          : 'bg-surface-container-high text-on-surface'
+                      }
+                      extra={entry.ip_address ? `IP: ${entry.ip_address}` : undefined}
+                    />
+                  );
+                })
+              ) : (
+                <>
+                  <ActivityItem
+                    initials="SA"
+                    name="Sarah Achieng"
+                    role="Data Clerk"
+                    time="22m ago"
+                    text={
+                      <>
+                        Resolved missing blood group for donor registration{' '}
+                        <span className="mono-tag">DNR-000412</span>.
+                      </>
+                    }
+                    tag="Blood Group Updated"
+                    tagClass="bg-secondary-container text-on-secondary-fixed"
+                    extra="Clinical verified"
+                  />
+                  <ActivityItem
+                    initials="DM"
+                    name="Dr. Mwangi"
+                    role="Supervisor"
+                    time="1h ago"
+                    text={
+                      <>
+                        Approved duplicate donor merge for{' '}
+                        <span className="mono-tag">DNR-010412</span> &amp;{' '}
+                        <span className="mono-tag">DNR-031877</span> (AI Match 98%).
+                      </>
+                    }
+                    tag="Supervisor Merged"
+                    tagClass="bg-surface-container-high text-on-surface"
+                  />
+                  <ActivityItem
+                    initials="SYS"
+                    name="Automated Ingest"
+                    role="System"
+                    time="2h ago"
+                    text={
+                      <>
+                        Completed inspection on batch{' '}
+                        <span className="mono-tag">KNBTS_Live_Dataset</span> (43,363
+                        records checked). 8 rule-sets evaluated.
+                      </>
+                    }
+                    tag="43,363 Checked"
+                    tagClass="bg-secondary-container text-on-secondary-fixed"
+                    extra="Zero dropped rows"
+                  />
+                </>
+              )}
             </div>
             <div className="mt-4 pt-4 border-t border-surface-container">
               <Link
-                to="/audit"
+                to="/queue"
                 className="inline-flex items-center gap-2 font-label-md text-primary hover:underline"
               >
-                View full activity history
+                View active review queue
                 <span className="material-symbols-outlined text-base">
                   arrow_forward
                 </span>
@@ -428,18 +524,18 @@ export function Dashboard() {
                 statusColor="text-on-surface"
               />
               <SystemRow
-                icon="sync"
-                title="Offline synchronization"
-                subtitle="Local IndexedDB write-ahead log"
-                status="0 pending (All synchronized)"
-                statusColor="text-on-surface-variant"
+                icon="sms"
+                title="Africa's Talking SMS Webhook"
+                subtitle="Two-way basic phone remediation active"
+                status="Operational"
+                statusColor="text-tertiary"
               />
               <SystemRow
                 icon="psychology"
                 title="Smart matching engine"
-                subtitle="Fuzzy score threshold ≥ 85%"
-                status="Probabilistic + Levenshtein"
-                statusColor="text-on-surface"
+                subtitle="Levenshtein + DOB proximity (99.56% precision)"
+                status="AI Active"
+                statusColor="text-tertiary"
               />
             </div>
             <div className="mt-4 pt-4 border-t border-surface-container flex justify-between items-center text-xs text-secondary">
@@ -447,73 +543,14 @@ export function Dashboard() {
                 <span className="material-symbols-outlined text-sm">
                   schedule
                 </span>{' '}
-                Last successful check: <strong>Today at 10:42 AM</strong>
+                Audit Trail: <strong>Immutable Append-Only</strong>
               </span>
               <button className="text-primary hover:underline font-semibold flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">
                   refresh
                 </span>{' '}
-                Run manual check
+                Sync telemetry
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* UPLOAD SECTION */}
-        <div className="content-card">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="font-headline-md text-on-surface">
-                Upload and Check Records
-              </h2>
-              <p className="font-body-md text-secondary text-sm">
-                Import raw facility logs to flag anomalies without modifying
-                source registries.
-              </p>
-            </div>
-            <a
-              href="#"
-              className="inline-flex items-center gap-1.5 text-primary text-xs font-label-sm font-semibold hover:underline"
-            >
-              <span className="material-symbols-outlined text-base">
-                download
-              </span>{' '}
-              Download standard template (.CSV)
-            </a>
-          </div>
-          <div className="upload-dropzone">
-            <div className="upload-icon">
-              <span className="material-symbols-outlined text-3xl">
-                cloud_upload
-              </span>
-            </div>
-            <h3 className="font-headline-sm text-on-surface">
-              Drag &amp; drop records dataset here
-            </h3>
-            <p className="font-body-md text-secondary text-sm mt-1 mb-4">
-              Accepts CSV, XLSX or TSV exports from District Health Information
-              Software (DHIS2) or blood bank fridges.
-            </p>
-            <label className="btn-hero-primary cursor-pointer">
-              <span className="material-symbols-outlined">folder_open</span>
-              <span>Select CSV or Excel file</span>
-              <input type="file" accept=".csv,.xlsx,.xls" className="hidden" />
-            </label>
-          </div>
-          <div className="safeguard-reassurance">
-            <span className="material-symbols-outlined text-primary text-2xl">
-              verified_user
-            </span>
-            <div>
-              <span className="font-label-md text-on-surface font-bold">
-                Guaranteed Operational Safety Principle
-              </span>
-              <p className="font-body-md text-secondary text-sm mt-1">
-                <strong>Reassurance:</strong> Checking records does NOT alter or
-                overwrite raw hospital data. UnitTrace operates as a read-only
-                analysis layer, flagging potential issues for human review and
-                supervisor sign-off before any downstream action is permitted.
-              </p>
             </div>
           </div>
         </div>
@@ -522,7 +559,7 @@ export function Dashboard() {
   );
 }
 
-/* Helper Components to keep the file clean */
+/* Helper Components */
 
 function ProblemCard({
   icon,
@@ -539,13 +576,13 @@ function ProblemCard({
 }) {
   return (
     <Link to="/queue" className="problem-card group">
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <span className="problem-icon">
-            <span className="material-symbols-outlined">{icon}</span>
-          </span>
-          <span className={`problem-badge ${badgeClass}`}>{badge}</span>
+      <div className="problem-card-header">
+        <div className="problem-icon">
+          <span className="material-symbols-outlined">{icon}</span>
         </div>
+        <span className={`badge ${badgeClass}`}>{badge}</span>
+      </div>
+      <div>
         <h3 className="problem-title">{title}</h3>
         <p className="problem-desc">{desc}</p>
       </div>

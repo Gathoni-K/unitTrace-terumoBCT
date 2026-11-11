@@ -3,7 +3,7 @@
    Real API client — talks to Gathoni's live backend
    ========================================================================== */
 
-const API_BASE = 'https://unittrace-terumobct.onrender.com';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://unittrace-terumobct.onrender.com';
 
 export interface TaskRecord {
   id: string;
@@ -47,6 +47,8 @@ export async function listTasks(
 export const TASK_TYPE_LABELS: Record<string, string> = {
   duplicate_donor: 'Possible duplicate donor',
   facility_name: 'Facility name mismatch',
+  implausible: 'Implausible Data',
+  invalid_isbt128: 'Invalid ISBT 128 ID',
   sensor_glitch: 'Sensor glitch',
   logger_gap: 'Temperature logger gap',
   missing_donor_blood_group: 'Missing donor blood group',
@@ -58,6 +60,8 @@ export const TASK_TYPE_LABELS: Record<string, string> = {
 export const TASK_TYPE_ICONS: Record<string, string> = {
   duplicate_donor: 'people',
   facility_name: 'domain_disabled',
+  implausible: 'domain_disabled',
+  invalid_isbt128: 'badge',
   sensor_glitch: 'device_thermostat',
   logger_gap: 'cloud_off',
   missing_donor_blood_group: 'bloodtype',
@@ -67,7 +71,50 @@ export const TASK_TYPE_ICONS: Record<string, string> = {
 };
 
 /* ==========================================================================
-   Task Detail API functions (append to the bottom of api.ts)
+   Metrics API
+   ========================================================================== */
+
+export interface BeforeAfterReport {
+  headlineMetric: string;
+  beforeValue: number;
+  afterValue: number;
+  resolvedCount: number;
+  improvementPercentage: string;
+  summaryText: string;
+  taskBreakdown: {
+    type: string;
+    beforeOpen: number;
+    afterResolved: number;
+    improvementPercentage: string;
+  }[];
+}
+
+export async function getMetrics(): Promise<BeforeAfterReport> {
+  const res = await fetch(`${API_BASE}/api/metrics/before-after`);
+  if (!res.ok) throw new Error(`Failed to fetch metrics: ${res.status}`);
+  return res.json();
+}
+
+export interface AuditLogItem {
+  id: string;
+  timestamp: string;
+  user_id: string | null;
+  action: string;
+  task_id: string | null;
+  channel: string | null;
+  user_role: string | null;
+  ip_address: string | null;
+  actor?: string | null;
+}
+
+export async function getAuditLogs(limit = 20): Promise<AuditLogItem[]> {
+  const res = await fetch(`${API_BASE}/api/audit?limit=${limit}`);
+  if (!res.ok) throw new Error(`Failed to fetch audit logs: ${res.status}`);
+  return res.json();
+}
+
+/* ==========================================================================
+   Task Detail API functions
    ========================================================================== */
 
 export interface DecisionPayload {
@@ -86,18 +133,40 @@ export async function getTask(id: string): Promise<TaskRecord> {
   return res.json();
 }
 
-export async function revealTaskPii(id: string): Promise<Record<string, unknown>> {
+export async function revealTaskPii(id: string): Promise<TaskRecord> {
   const res = await fetch(`${API_BASE}/api/tasks/${id}/reveal`);
   if (!res.ok) throw new Error(`Failed to reveal PII: ${res.status}`);
   return res.json();
 }
 
 export async function submitDecision(id: string, payload: DecisionPayload): Promise<{ ok: boolean; task?: TaskRecord }> {
+  const role = payload.user_role ?? 'clerk';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-user-role': role,
+  };
+  if (payload.user_id) {
+    headers['x-user-id'] = payload.user_id;
+  }
+
   const res = await fetch(`${API_BASE}/api/tasks/${id}/decision`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Failed to submit decision: ${res.status}`);
+
+  if (!res.ok) {
+    let errMessage = `Failed to submit decision: ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.error) {
+        errMessage = data.error;
+      }
+    } catch {
+      // Ignore json parse error
+    }
+    throw new Error(errMessage);
+  }
+
   return res.json();
 }

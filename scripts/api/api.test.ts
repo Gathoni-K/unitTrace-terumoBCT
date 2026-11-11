@@ -46,6 +46,50 @@ describe('Task Management API', () => {
     expect(data.status).toBe('ok');
   });
 
+  it('GET /api/audit returns recent audit log entries with required fields', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          at: '2026-11-10T22:00:00Z',
+          user_id: 'clerk-sarah',
+          action: 'accept',
+          task_id: 41,
+          after_value: {
+            channel: 'web',
+            user_role: 'clerk',
+            ip_address: '192.168.1.5',
+            actor: 'Sarah Achieng',
+          },
+        },
+      ],
+    });
+
+    const res = await fetch(`${baseUrl}/api/audit`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data).toHaveLength(1);
+    expect(data[0]).toMatchObject({
+      id: '1',
+      timestamp: expect.any(String),
+      user_id: 'clerk-sarah',
+      action: 'accept',
+      task_id: '41',
+      channel: 'web',
+      user_role: 'clerk',
+      ip_address: '192.168.1.5',
+    });
+  });
+
+  it('CORS headers allow x-user-role and x-user-id in preflight and responses', async () => {
+    const res = await fetch(`${baseUrl}/api/tasks`, { method: 'OPTIONS' });
+    expect(res.status).toBe(204);
+    const allowHeaders = res.headers.get('access-control-allow-headers');
+    expect(allowHeaders).toContain('x-user-role');
+    expect(allowHeaders).toContain('x-user-id');
+  });
+
   it('GET /api/tasks returns paginated task list', async () => {
     mockQuery
       // Count query

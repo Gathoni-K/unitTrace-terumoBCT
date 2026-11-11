@@ -21,6 +21,7 @@ server.listen(PORT, HOST, () => {
   console.log(` - POST /api/tasks/:id/decision           Submit human decision (Web)`);
   console.log(` - POST /api/tasks/:id/reveal             Audit-logged PII reveal`);
   console.log(` - GET  /api/metrics/before-after         Before/After proof metrics`);
+  console.log(` - GET  /api/audit                        Recent audit log entries`);
   console.log(` - POST /api/webhooks/africastalking/sms  Africa's Talking SMS Webhook`);
   console.log(`====================================================`);
   console.log(` Production AT Callback URL:`);

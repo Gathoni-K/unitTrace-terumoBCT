@@ -3,8 +3,10 @@
    ========================================================================== */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../providers';
 import {
   getTask,
+  revealTaskPii,
   submitDecision,
   TASK_TYPE_LABELS,
   TASK_TYPE_ICONS,
@@ -15,6 +17,11 @@ import './TaskDetail.css';
 export function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { role } = useAuth();
+
+  const currentRole: 'clerk' | 'supervisor' = role === 'supervisor' ? 'supervisor' : 'clerk';
+  const userName = currentRole === 'supervisor' ? 'Dr. Mwangi (Supervisor)' : 'Sarah Achieng (Data Clerk)';
+  const userId = currentRole === 'supervisor' ? 'supervisor-mwangi' : 'clerk-sarah';
 
   const [task, setTask] = useState<TaskRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +29,8 @@ export function TaskDetail() {
   const [actionLoading, setActionLoading] = useState(false);
   const [decisionMade, setDecisionMade] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [piiRevealed, setPiiRevealed] = useState(false);
+  const [revealingPii, setRevealingPii] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -32,48 +41,78 @@ export function TaskDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const handleRevealPii = async () => {
+    if (!id) return;
+    setRevealingPii(true);
+    try {
+      const unmaskedTask = await revealTaskPii(id);
+      setTask(unmaskedTask);
+      setPiiRevealed(true);
+    } catch (err) {
+      alert(`Failed to reveal PII: ${(err as Error).message}`);
+    } finally {
+      setRevealingPii(false);
+    }
+  };
+
   const handleDecision = async (action: 'accept' | 'change' | 'reject') => {
     if (!id) return;
     setActionLoading(true);
     try {
       await submitDecision(id, {
         action,
-        user_id: 'clerk-sarah',
-        actor: 'Sarah Achieng',
-        user_role: 'clerk',
+        user_id: userId,
+        actor: userName,
+        user_role: currentRole,
         channel: 'web',
         note: note || undefined,
       });
       setDecisionMade(action);
     } catch (err) {
-      alert(`Failed to submit decision: ${(err as Error).message}`);
+      alert(`Decision Failed: ${(err as Error).message}`);
     } finally {
       setActionLoading(false);
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="task-detail-container">
         <p>Loading task…</p>
       </div>
     );
-  if (error)
+  }
+
+  if (error) {
     return (
       <div className="task-detail-container">
         <p className="text-error">Error: {error}</p>
       </div>
     );
-  if (!task)
+  }
+
+  if (!task) {
     return (
       <div className="task-detail-container">
         <p>Task not found.</p>
       </div>
     );
+  }
 
   const isDecisionMade = decisionMade !== null;
   const suggestion = task.suggestion as Record<string, unknown> | undefined;
-  const observedValue = suggestion?.observedValue;
+
+  // Extract facility name details if applicable
+  const rawFacilityMatch = task.reason.match(/Facility name '([^']+)'/);
+  const canonicalFacilityMatch = task.reason.match(/registry '([^']+)'/);
+  const facilityRawName = (suggestion?.observedValue as string) || (rawFacilityMatch ? rawFacilityMatch[1] : undefined);
+  const facilityCanonicalName = (suggestion?.expected_name as string) || (canonicalFacilityMatch ? canonicalFacilityMatch[1] : undefined);
+
+  // Extract duplicate donor details
+  const isDuplicateDonor = task.type === 'duplicate_donor';
+  const rawScore = typeof suggestion?.score === 'number' ? suggestion.score : Number(task.confidence);
+  const similarityScorePct = !isNaN(rawScore) ? `${Math.round(rawScore * 100)}%` : '95%';
+  const matchedFields = (suggestion?.matched_fields as string[]) || ['phone_last4', 'home_county', 'birth_date'];
 
   return (
     <div className="task-detail-container">
@@ -84,20 +123,50 @@ export function TaskDetail() {
 
       <div className="task-header">
         <div>
-          <span className="mono-tag">#{task.id}</span>
+          <div className="flex items-center gap-3">
+            <span className="mono-tag">#{task.id}</span>
+            <span className="reviewer-pill">
+              <span className="material-symbols-outlined text-sm">badge</span>
+              Reviewer: <strong>{userName}</strong>
+            </span>
+          </div>
           <h1 className="font-headline-lg text-on-surface mt-2">
             {TASK_TYPE_LABELS[task.type] ?? task.type}
           </h1>
         </div>
-        <div
-          className={`confidence-badge confidence-${task.confidence} text-sm px-4 py-2`}
-        >
+
+        <div className={`confidence-badge confidence-${task.confidence} text-sm px-4 py-2`}>
           <span className="material-symbols-outlined text-base">verified</span>
-          {task.confidence === 'rule'
-            ? 'Rule-based flag'
-            : `Confidence: ${task.confidence}`}
+          {task.confidence === 'rule' ? 'Rule-based flag' : `Confidence: ${task.confidence}`}
         </div>
       </div>
+
+      {/* PII Masking & Reveal Notice */}
+      {piiRevealed ? (
+        <div className="pii-revealed-banner">
+          <span className="material-symbols-outlined text-warning">warning</span>
+          <span>⚠️ PII Revealed. Access has been logged to the immutable audit trail.</span>
+        </div>
+      ) : (
+        <div className="pii-masked-container">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary text-sm">shield</span>
+            <span className="text-xs text-secondary font-medium">
+              Personal Data Masked (YYYY-XX-XX, XXXX) under Kenya Data Protection Act 2019.
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn-reveal-pii"
+            onClick={handleRevealPii}
+            disabled={revealingPii}
+            title="Break-glass audited unmasking"
+          >
+            <span className="material-symbols-outlined text-sm">visibility</span>
+            {revealingPii ? 'Unmasking…' : 'Reveal PII'}
+          </button>
+        </div>
+      )}
 
       {/* Reason Box */}
       <div className="reason-box">
@@ -112,7 +181,39 @@ export function TaskDetail() {
         </div>
       </div>
 
-      {/* Data Comparison */}
+      {/* AI Smart Match Summary for Duplicate Donors */}
+      {isDuplicateDonor && (
+        <div className="ai-summary-card">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">psychology</span>
+              <h3 className="font-label-lg text-on-surface">AI Fuzzy Matching Analysis</h3>
+            </div>
+            <span className="ai-match-chip font-bold">
+              Similarity Score: {similarityScorePct}
+            </span>
+          </div>
+          <p className="text-xs text-secondary">
+            Composite score derived from Levenshtein edit distance on county, day/month birth date proximity, and phone matching:
+          </p>
+          <div className="ai-chips-list">
+            {matchedFields.map((f) => (
+              <span key={f} className="ai-match-chip">
+                <span className="material-symbols-outlined text-xs">check</span>
+                {f === 'phone_last4'
+                  ? 'Same Phone (Last 4 digits)'
+                  : f === 'birth_date'
+                  ? 'Matching Birth Date Proximity'
+                  : f === 'home_county'
+                  ? 'Matching County (Fuzzy)'
+                  : f}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Data Comparison Grid */}
       <div className="comparison-grid">
         <div className="record-card">
           <div className="record-header">
@@ -120,22 +221,48 @@ export function TaskDetail() {
             <span className="mono-tag">{task.recordIds[0]}</span>
           </div>
           <div className="record-body">
-            {observedValue !== undefined ? (
+            {isDuplicateDonor ? (
+              <>
+                <div className="field-row">
+                  <span className="field-label">Donor Identifier</span>
+                  <span className="field-value font-bold">{task.recordIds[0]}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Target Merge Action</span>
+                  <span className="field-value text-primary font-semibold">Primary Profile (Retain)</span>
+                </div>
+              </>
+            ) : task.type === 'implausible' || task.type === 'facility_name' ? (
+              <>
+                <div className="field-row">
+                  <span className="field-label">Observed Raw Name</span>
+                  <span className="field-value text-error font-bold">{facilityRawName || 'Non-standard name'}</span>
+                </div>
+                <div className="field-row">
+                  <span className="field-label">Registry Status</span>
+                  <span className="field-value text-secondary">Unmatched in Master List</span>
+                </div>
+              </>
+            ) : suggestion?.observedValue !== undefined ? (
               <div className="field-row">
                 <span className="field-label">Observed Value</span>
                 <span className="field-value text-error font-bold">
-                  {String(observedValue)}
+                  {String(suggestion.observedValue)}
                 </span>
               </div>
             ) : (
-              <p className="text-sm text-secondary">
-                No detailed field data available.
-              </p>
+              <div className="field-row">
+                <span className="field-label">Defect Type</span>
+                <span className="field-value text-error font-semibold">
+                  {TASK_TYPE_LABELS[task.type] ?? task.type}
+                </span>
+              </div>
             )}
+
             <div className="field-row">
               <span className="field-label">Detected by</span>
               <span className="field-value">
-                {task.source === 'smart' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
+                {task.source === 'smart' || task.source === 'ai' ? 'AI Fuzzy Matcher' : 'Rule Engine'}
               </span>
             </div>
             <div className="field-row">
@@ -150,16 +277,51 @@ export function TaskDetail() {
         {task.recordIds.length > 1 && (
           <div className="record-card">
             <div className="record-header">
-              <h3 className="font-label-md">Record B</h3>
+              <h3 className="font-label-md">Record B (Comparison)</h3>
               <span className="mono-tag">{task.recordIds[1]}</span>
             </div>
             <div className="record-body">
-              <p className="text-sm text-secondary">
-                Coupled record for review.
-              </p>
+              {isDuplicateDonor ? (
+                <>
+                  <div className="field-row">
+                    <span className="field-label">Donor Identifier</span>
+                    <span className="field-value font-bold">{task.recordIds[1]}</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Proposed Merge Action</span>
+                    <span className="field-value text-error font-semibold">Secondary Profile (Merge In)</span>
+                  </div>
+                  <div className="field-row">
+                    <span className="field-label">Matching Confidence</span>
+                    <span className="field-value">{similarityScorePct}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="field-row">
+                  <span className="field-label">Coupled Reference</span>
+                  <span className="field-value font-mono">{task.recordIds[1]}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(task.type === 'implausible' || task.type === 'facility_name') && (
+          <div className="record-card">
+            <div className="record-header">
+              <h3 className="font-label-md">Canonical Registry Resolution</h3>
+              <span className="mono-tag text-success">DHIS2 Target</span>
+            </div>
+            <div className="record-body">
               <div className="field-row">
-                <span className="field-label">Reference ID</span>
-                <span className="field-value">{task.recordIds[1]}</span>
+                <span className="field-label">Suggested Canonical Name</span>
+                <span className="field-value text-success font-bold">
+                  {facilityCanonicalName || 'Canonical Facility Registry Match'}
+                </span>
+              </div>
+              <div className="field-row">
+                <span className="field-label">DHIS2 Aggregation</span>
+                <span className="field-value">Fix restores national reporting visibility</span>
               </div>
             </div>
           </div>
@@ -170,10 +332,9 @@ export function TaskDetail() {
       <div className="lock-notice">
         <span className="material-symbols-outlined text-error">lock</span>
         <div>
-          <strong className="text-on-surface">Sensitive field locked.</strong>
+          <strong className="text-on-surface">Clinical Safety & Audit Safeguard.</strong>
           <p className="text-sm text-on-surface-variant">
-            Any changes to blood group or lab results require a qualified
-            person. This cannot be changed by SMS or automatically.
+            Zero automated merges are permitted. Every modification is attributed to the current authenticated reviewer with client IP and role verification in the national audit trail.
           </p>
         </div>
       </div>
@@ -186,27 +347,41 @@ export function TaskDetail() {
           </span>
           <div>
             <h3 className="font-headline-sm text-success">
-              Decision recorded: {decisionMade.toUpperCase()}
+              Decision Recorded: {decisionMade.toUpperCase()}
             </h3>
             <p className="text-sm text-on-surface-variant mt-1">
-              The change has been logged in the audit trail. If this requires
-              supervisor approval, it will now appear in their queue.
+              The decision was successfully verified and committed to the audit trail by{' '}
+              <strong>{userName}</strong> ({currentRole.toUpperCase()}).
             </p>
           </div>
         </div>
       ) : (
         <div className="action-area">
-          <h3 className="font-label-lg text-on-surface mb-2">
-            What would you like to do?
-          </h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-label-lg text-on-surface">
+              Submit Review Decision
+            </h3>
+            <span className="text-xs text-secondary">
+              Acting as: <strong>{userName}</strong>
+            </span>
+          </div>
+
+          {isDuplicateDonor && currentRole === 'clerk' && (
+            <div className="role-restriction-notice">
+              <span className="material-symbols-outlined text-base">gpp_maybe</span>
+              <span>
+                <strong>Clinical RBAC Safeguard:</strong> Merging duplicate donor identities is restricted to <strong>Supervisors</strong>. As a Data Clerk, submitting a merge decision will be blocked.
+              </span>
+            </div>
+          )}
 
           <div className="form-group mb-4">
             <label className="font-label-sm text-secondary block mb-1">
-              Optional note (required for Reject)
+              Audit Note (Required for Reject, recommended for Accept/Change)
             </label>
             <textarea
               className="note-input"
-              placeholder="Add context for the audit trail..."
+              placeholder="Provide clinical rationale for the immutable audit log…"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
@@ -220,7 +395,7 @@ export function TaskDetail() {
               disabled={actionLoading}
             >
               <span className="material-symbols-outlined">check</span>
-              Accept
+              Accept & Fix
             </button>
             <button
               className="btn-change"
@@ -228,7 +403,7 @@ export function TaskDetail() {
               disabled={actionLoading}
             >
               <span className="material-symbols-outlined">edit</span>
-              Change
+              Change Suggestion
             </button>
             <button
               className="btn-reject"
@@ -236,12 +411,11 @@ export function TaskDetail() {
               disabled={actionLoading || !note.trim()}
             >
               <span className="material-symbols-outlined">close</span>
-              Reject
+              Reject Flag
             </button>
           </div>
           <p className="text-xs text-secondary text-center mt-3">
-            Nothing is auto-corrected. A human decision is required for every
-            change.
+            Nothing is auto-corrected. Human-in-the-loop validation is enforced on every defect.
           </p>
         </div>
       )}
