@@ -137,6 +137,14 @@ export function TaskDetail() {
     task.type === 'duplicate_donor' ||
     task.type === 'inconsistent_facility_name' ||
     task.type === 'facility_name';
+  const taskExplanation =
+    task.type === 'duplicate_donor'
+      ? 'Our AI thinks these might be the same person. They share the same gender, phone ending, and birth date.'
+      : task.type === 'sensor_glitch'
+        ? 'The fridge recorded an impossible temperature. The thermometer is probably broken.'
+        : task.type === 'unconfirmed_transfer'
+          ? 'Blood was sent to another hospital, but they never confirmed they received it.'
+          : formatFriendlyReason(task.reason, task.type);
 
   return (
     <div className="task-detail-container">
@@ -171,7 +179,7 @@ export function TaskDetail() {
             Why this was flagged
           </h3>
           <p className="font-body-md text-on-surface-variant">
-            {formatFriendlyReason(task.reason, task.type)}
+            {taskExplanation}
           </p>
         </div>
       </div>
@@ -270,53 +278,60 @@ export function TaskDetail() {
           </div>
         </div>
       ) : (
-        <div className="action-area">
-          <h3 className="font-label-lg text-on-surface mb-2">
-            What would you like to do?
-          </h3>
-          <div className="form-group mb-4">
-            <label className="font-label-sm text-secondary block mb-1">
-              Optional note (required for Reject)
-            </label>
-            <textarea
-              className="note-input"
-              placeholder="Add context for the audit trail..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-            />
+        currentRole === 'supervisor' ? (
+          <div className="action-area">
+            <h3 className="font-label-lg text-on-surface mb-2">
+              What would you like to do?
+            </h3>
+            <div className="form-group mb-4">
+              <label className="font-label-sm text-secondary block mb-1">
+                Optional note (required for Reject)
+              </label>
+              <textarea
+                className="note-input"
+                placeholder="Add context for the audit trail..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="action-buttons">
+              <button
+                className="btn-accept"
+                onClick={() => handleDecision('accept')}
+                disabled={actionLoading}
+              >
+                <span className="material-symbols-outlined">check</span>
+                Accept
+              </button>
+              <button
+                className="btn-change"
+                onClick={() => handleDecision('change')}
+                disabled={actionLoading}
+              >
+                <span className="material-symbols-outlined">edit</span>
+                Change
+              </button>
+              <button
+                className="btn-reject"
+                onClick={() => handleDecision('reject')}
+                disabled={actionLoading || !note.trim()}
+              >
+                <span className="material-symbols-outlined">close</span>
+                Reject
+              </button>
+            </div>
+            <p className="text-xs text-secondary text-center mt-3">
+              Nothing is auto-corrected. A human decision is required for every
+              change.
+            </p>
           </div>
-          <div className="action-buttons">
-            <button
-              className="btn-accept"
-              onClick={() => handleDecision('accept')}
-              disabled={actionLoading}
-            >
-              <span className="material-symbols-outlined">check</span>
-              Accept
-            </button>
-            <button
-              className="btn-change"
-              onClick={() => handleDecision('change')}
-              disabled={actionLoading}
-            >
-              <span className="material-symbols-outlined">edit</span>
-              Change
-            </button>
-            <button
-              className="btn-reject"
-              onClick={() => handleDecision('reject')}
-              disabled={actionLoading || !note.trim()}
-            >
-              <span className="material-symbols-outlined">close</span>
-              Reject
-            </button>
+        ) : (
+          <div className="clerk-notice">
+            Only a Supervisor can fix this record. Please ask your supervisor
+            to log in.
           </div>
-          <p className="text-xs text-secondary text-center mt-3">
-            Nothing is auto-corrected. A human decision is required for every
-            change.
-          </p>
-        </div>
+        )
       )}
     </div>
   );

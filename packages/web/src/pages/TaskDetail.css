@@ -212,6 +212,15 @@
   border: 1px solid var(--surface-container);
 }
 
+.clerk-notice {
+  padding: 16px 20px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--surface-container);
+  border-radius: var(--border-radius-xl);
+  color: var(--on-surface-variant);
+  text-align: center;
+}
+
 .role-restriction-notice {
   padding: 10px 14px;
   background: #fef2f2;
