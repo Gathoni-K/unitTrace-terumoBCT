@@ -2,7 +2,7 @@
    packages/web/src/components/AuditPanel.tsx
    ========================================================================== */
 import { useEffect, useState } from 'react';
-import { getAuditEntries } from '../api';
+import { getAuditEntries, type AuditLogItem } from '../api';
 import './AuditPanel.css';
 
 export function AuditPanel({
@@ -12,7 +12,7 @@ export function AuditPanel({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [entries, setEntries] = useState<Array<Record<string, unknown>>>([]);
+  const [entries, setEntries] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchEntries = () => {
@@ -55,7 +55,7 @@ export function AuditPanel({
             </p>
           )}
           {entries.map((entry, i) => (
-            <div key={i} className="audit-entry">
+            <div key={entry.id || i} className="audit-entry">
               <div className="audit-entry-top">
                 <span className="audit-action">
                   {String(entry.action ?? 'unknown').toUpperCase()}
@@ -68,11 +68,11 @@ export function AuditPanel({
               </div>
               <p className="audit-meta">
                 Task #{String(entry.task_id ?? 'N/A')} ·{' '}
-                {String(entry.actor_id ?? 'System')}
+                {String(entry.actor ?? entry.user_id ?? 'System')}
               </p>
               <p className="audit-time">
                 {new Date(
-                  String(entry.created_at ?? Date.now()),
+                  String(entry.timestamp ?? Date.now()),
                 ).toLocaleString()}
               </p>
             </div>
