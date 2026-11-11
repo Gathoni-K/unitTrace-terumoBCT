@@ -1,6 +1,3 @@
-/* ==========================================================================
-   packages/web/src/pages/RecordsToReview.tsx
-   ========================================================================== */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -82,6 +79,7 @@ export function RecordsToReview() {
             <span className="text-sm text-secondary">Live data</span>
           </div>
           <button
+          type="button"
             className="btn-audit-log"
             onClick={() => setIsAuditOpen(!isAuditOpen)}
           >
@@ -94,6 +92,7 @@ export function RecordsToReview() {
       <div className="queue-tabs">
         {STATUS_TABS.map((tab) => (
           <button
+          type="button"
             key={tab.key}
             className={`queue-tab ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}

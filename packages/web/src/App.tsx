@@ -1,11 +1,5 @@
-/* ==========================================================================
-   packages/web/src/App.tsx
-   ========================================================================== */
-
-import * as React from 'react';
 import {
   BrowserRouter,
-  Link,
   Navigate,
   Outlet,
   Route,
@@ -54,11 +48,11 @@ function SignInPage() {
   return <SignIn onSignIn={() => navigate('/')} />;
 }
 
-function RequireRole({ role }: { role?: 'supervisor' }) {
+function RequireRole({ requiredRole }: { requiredRole?: 'supervisor' }) {
   const { role: current } = useAuth();
   return !current ? (
     <Navigate to="/sign-in" replace />
-  ) : role && current !== role ? (
+  ) : requiredRole && current !== requiredRole ? (
     <Navigate to="/" replace />
   ) : (
     <Outlet />
@@ -95,7 +89,7 @@ export function App() {
               path="/sms-simulator"
               element={<Page title="smsSimulator" />}
             />
-            <Route element={<RequireRole role="supervisor" />}>
+            <Route element={<RequireRole requiredRole="supervisor" />}>
               <Route path="/approvals" element={<Page title="approvals" />} />
             </Route>
           </Route>
